@@ -25,7 +25,7 @@ namespace MicrosoftGraphSampleConsole
 
             using (var client = new HttpClient())
             {
-                using (var request = new HttpRequestMessage(HttpMethod.Get, Constants.ResourceUrl.TrimEnd('/') + restRequest))
+                using (var request = new HttpRequestMessage(HttpMethod.Get, Constants.Url + restRequest))
                 {
                     request.Headers.Add("Authorization", "Bearer " + token);
                     using (var response = await client.SendAsync(request))

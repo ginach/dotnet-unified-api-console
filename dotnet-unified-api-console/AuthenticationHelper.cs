@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Threading.Tasks;
 using Microsoft.IdentityModel.Clients.ActiveDirectory;
-using Microsoft.Graph;
+using microsoft.graph;
 
 namespace MicrosoftGraphSampleConsole
 {
@@ -81,12 +81,10 @@ namespace MicrosoftGraphSampleConsole
         /// Get Active Directory Client for User.
         /// </summary>
         /// <returns>ActiveDirectoryClient for User.</returns>
-        public static Microsoft.Graph.GraphService GetActiveDirectoryClientAsUser()
+        public static GraphService GetActiveDirectoryClientAsUser()
         {
-            // Uri servicePointUri = new Uri(Constants.Url);
-            // Uri serviceRoot = new Uri(servicePointUri, Constants.TenantId);
             Uri serviceRoot = new Uri(Constants.Url);
-            Microsoft.Graph.GraphService graphClient = new Microsoft.Graph.GraphService(serviceRoot, 
+            GraphService graphClient = new GraphService(serviceRoot, 
                 async () => await AcquireTokenAsyncForUser()); 
             return graphClient;
         }

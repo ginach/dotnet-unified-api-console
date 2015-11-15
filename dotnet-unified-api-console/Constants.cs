@@ -11,7 +11,7 @@
 
         public const string AuthString = "https://login.microsoftonline.com/";
         public const string ResourceUrl = "https://graph.microsoft.com/";
-        public const string Url = "https://graph.microsoft.com/stagingV1.0/";
+        public const string Url = "https://graph.microsoft.com/v1.0/";
 
     }
 }

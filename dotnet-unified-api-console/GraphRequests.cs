@@ -5,7 +5,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.IO;
 using System.Threading.Tasks;
-using Microsoft.Graph;
+using microsoft.graph;
 using Microsoft.IdentityModel.Clients.ActiveDirectory;
 using Microsoft.OData.Client;
 using Microsoft.OData.ProxyExtensions;
@@ -17,7 +17,7 @@ namespace MicrosoftGraphSampleConsole
 {
     internal class Requests
     {
-        public static Microsoft.Graph.GraphService client;
+        public static microsoft.graph.GraphService client;
         public static void UserMode()
         {
             // record start DateTime of execution
@@ -57,7 +57,7 @@ namespace MicrosoftGraphSampleConsole
             user user = new user();
             try
             {
-                
+
                 user = (user)client.me.ExecuteAsync().Result;
                 Console.WriteLine();
                 Console.WriteLine("GET /me");
@@ -70,22 +70,19 @@ namespace MicrosoftGraphSampleConsole
                      e.Message, e.InnerException != null ? e.InnerException.Message : "");
             }
 
-            //try
-            //{
-            //    User user = (User)client.Me.ExecuteAsync().Result;
-            //    String photo = user.thumbnailPhoto.SelfLink.AbsolutePath;
-            //    string token = AuthenticationHelper.TokenForUser;
-            //    Stream photoStream = Helper.GetRestRequestStream(photo, token).Result;
-            //    Console.WriteLine("Got stream photo");
-
-            //    // IPhotoFetcher myphoto = (IPhotoFetcher)client.Me.UserPhoto.ToPhoto().ExecuteAsync().Result;
-            //    // IPhoto _photo = myphoto.
-            //}
-            //catch (Exception)
-            //{
-            //    Console.WriteLine("Failed to get stream");
-            //}
-
+            try
+            {
+                // get signed in user's picture.  Drop to REST for this - CL doesn't support this :(
+                string token = AuthenticationHelper.TokenForUser;
+                string request = "me/Photo/$value";
+                Stream photoStream = Helper.GetRestRequestStream(request, token).Result;
+                Console.WriteLine("Got stream photo");
+            }
+            catch (Exception)
+            {
+                Console.WriteLine("Failed to get stream");
+            }
+             
             try
             {
                 // GET /me/directReports
@@ -115,10 +112,37 @@ namespace MicrosoftGraphSampleConsole
                      e.Message, e.InnerException != null ? e.InnerException.Message : "");
             }
 
+            try
+            {
+                // GET /me/manager
+                IdirectoryObject manager = client.me.manager.ExecuteAsync().Result;
+                Console.WriteLine();
+                Console.WriteLine("GET /me/manager");
+                Console.WriteLine();
+                if (manager == null)
+                {
+                    Console.WriteLine("      no manager");
+                }
+                else
+                {
+                    Iuser _user = client.users.GetById(manager.id).ExecuteAsync().Result;
+                    Iuser __user = (Iuser)_user;
+                    Console.WriteLine("\nManager      Id: {0}  UPN: {1}", __user.id, __user.userPrincipalName);
+                    //    }
+                }
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine("\nError getting directReports {0} {1}",
+                     e.Message, e.InnerException != null ? e.InnerException.Message : "");
+            }
+
             // GET /me/memberOf
             try
             {
-                List<IdirectoryObject> _groups = client.me.memberOf.ExecuteAsync().Result.CurrentPage.ToList();
+                IuserFetcher uFetcher = user;
+                List<IdirectoryObject> _groups = uFetcher.memberOf.ExecuteAsync().Result.CurrentPage.ToList();
+                // List<IdirectoryObject> _groups = client.me.memberOf.ExecuteAsync().Result.CurrentPage.ToList();
                 Console.WriteLine();
                 Console.WriteLine("GET /me/memberOf");
                 Console.WriteLine();
@@ -128,9 +152,9 @@ namespace MicrosoftGraphSampleConsole
                 }
                 foreach (IdirectoryObject _group in _groups)
                 {
-                    if (_group is Igroup)
+                    if (_group is group)
                     {
-                        Igroup __group = (Igroup)_group;
+                        group __group = _group as group;
                         Console.WriteLine("    Id: {0}  UPN: {1}", __group.id, __group.displayName);
                     }
                 }
@@ -175,7 +199,7 @@ namespace MicrosoftGraphSampleConsole
             {
 
                 // GET /me/Messages?$top=5
-                List<Imessage> messages = client.me.Messages.Take(5).ExecuteAsync().Result.CurrentPage.ToList();
+                List<Imessage> messages = client.me.messages.Take(5).ExecuteAsync().Result.CurrentPage.ToList();
                 Console.WriteLine();
                 Console.WriteLine("GET /me/messages?$top=5");
                 Console.WriteLine();
@@ -185,11 +209,11 @@ namespace MicrosoftGraphSampleConsole
                 }
                 foreach (Imessage message in messages)
                 {
-                    Console.WriteLine("    Message: {0} received {1} ", message.Subject, message.ReceivedDateTime);
+                    Console.WriteLine("    Message: {0} received {1} ", message.subject, message.receivedDateTime);
                 }
 
                 // GET /me/Events?$top=5
-                List<Ievent> events = client.me.Events.Take(5).ExecuteAsync().Result.CurrentPage.ToList();
+                List<Ievent> events = client.me.events.Take(5).ExecuteAsync().Result.CurrentPage.ToList();
                 Console.WriteLine();
                 Console.WriteLine("GET /me/events?$top=5");
                 Console.WriteLine();
@@ -199,11 +223,11 @@ namespace MicrosoftGraphSampleConsole
                 }
                 foreach (Ievent _event in events)
                 {
-                    Console.WriteLine("    Event: {0} starts {1} ", _event.Subject, _event.Start);
+                    Console.WriteLine("    Event: {0} starts {1} ", _event.subject, _event.start);
                 }
 
                 // GET /me/contacts?$top=5
-                List<Icontact> myContacts = client.me.Contacts.Take(5).ExecuteAsync().Result.CurrentPage.ToList();
+                List<Icontact> myContacts = client.me.contacts.Take(5).ExecuteAsync().Result.CurrentPage.ToList();
                 Console.WriteLine();
                 Console.WriteLine("GET /me/myContacts?$top=5");
                 Console.WriteLine();
@@ -213,7 +237,7 @@ namespace MicrosoftGraphSampleConsole
                 }
                 foreach (Icontact _contact in myContacts)
                 {
-                    Console.WriteLine("    Contact: {0} ", _contact.DisplayName);
+                    Console.WriteLine("    Contact: {0} ", _contact.displayName);
                 }
             }
             catch (Exception e)
@@ -272,231 +296,248 @@ namespace MicrosoftGraphSampleConsole
 
             #endregion
 
-            //    #region Create a unified group
-            //     // POST /groups - create unified group 
-            //    Console.WriteLine("\nDo you want to create a new unified group? Click y/n\n");
-            //    ConsoleKeyInfo key = Console.ReadKey();
-            //    if (key.KeyChar == 'y')
-            //    {
-            //        string suffix = Helper.GetRandomString(5);
-            //        group group = new group
-            //        {
-            //            groupTypes = new List<string> { "Unified" },
-            //            displayName = "Unified group " + suffix,
-            //            description = "Group " + suffix + " is the best ever",
-            //            mailNickname = "Group" + suffix,
-            //            mailEnabled = true,
-            //            securityEnabled = false
-            //        };
-            //        try
-            //        {
-            //            client.groups.AddgroupAsync(group).Wait();
-            //            Console.WriteLine("\nCreated unified group {0}", group.displayName);
-            //        }
-            //        catch (Exception)
-            //        {
-            //            Console.WriteLine("\nIssue creating the group {0}", group.displayName);
-            //        }
-            //    }                
-            //    #endregion
-
-            //    #region Add group members
-            //    //client.Context.SaveChanges();
-            //    //Group retrievedGroup = new Group(); 
-            //    //List<IUser> members = client.users.Take(3).ExecuteAsync().Result.CurrentPage.ToList();
-            //    ////List<IGroup> foundGroups = client.groups.Where(g => g.displayName.Equals(group.displayName)).ExecuteAsync().Result.CurrentPage.ToList();
-            //    ////if (foundGroups != null && foundGroups.Count > 0)
-            //    ////{
-            //    ////    retrievedGroup = foundGroups.First() as Group;
-            //    ////}
-            //    //foreach (IUser _user in members)
-            //    //{
-            //    //    try
-            //    //    {
-            //    //        group.members.Add(_user as DirectoryObject);
-            //    //        group.UpdateAsync().Wait();
-            //    //        Console.WriteLine("\nAdding {0} to group {1}", _user.userPrincipalName, group.displayName);
-            //    //    }
-            //    //    catch (Exception e)
-            //    //    {
-            //    //        Console.WriteLine("\nError assigning member to group. {0} {1}",
-            //    //             e.Message, e.InnerException != null ? e.InnerException.Message : "");
-            //    //    }
-            //    //}
-
-            //    //// now remove the first one
-            //    //foreach (IUser _user in members)
-            //    //{
-            //    //    try
-            //    //    {
-            //    //        User member = (User)_user;
-            //    //        group.members.Remove(member as DirectoryObject);
-            //    //        group.UpdateAsync().Wait();
-            //    //        Console.WriteLine("\nRemoved {0} from group {1}", member.userPrincipalName, group.displayName);
-            //    //        // only remove the first one
-            //    //        break;
-            //    //    }
-            //    //    catch (Exception e)
-            //    //    {
-            //    //        Console.WriteLine("\nError removing member from group. {0} {1}",
-            //    //             e.Message, e.InnerException != null ? e.InnerException.Message : "");
-            //    //    }
-            //    //}
-                
-                
-            //    #endregion
-
-                #region Get groups
-                // GET /groups?$top=5
-                List<Igroup> groups = client.groups.Take(5).ExecuteAsync().Result.CurrentPage.ToList();
-                Console.WriteLine();
-                Console.WriteLine("GET /groups?$top=5");
-                Console.WriteLine();
-                foreach (Igroup _group in groups)
+            #region Create a unified group
+            // POST /groups - create unified group 
+            Console.WriteLine("\nDo you want to create a new unified group? Click y/n\n");
+            ConsoleKeyInfo key = Console.ReadKey();
+            group uGroup = null;
+            if (key.KeyChar == 'y')
+            {
+                string suffix = Helper.GetRandomString(5);
+                uGroup = new group
                 {
-                    Console.WriteLine("    Group Id: {0}  upn: {1}", _group.id, _group.displayName);
-                    foreach (string _type in _group.groupTypes)
-                    {
-                        if (_type == "Unified")
-                        {
-                            Console.WriteLine(": This is a Unifed Group");
-                        }
-                    }
-                }
-                #endregion
-
-                #region Get the top 5 UNIFIED groups and view their associated content
-                // GET /groups?$top=5&$filter=groupType eq 'Unified'
-                groups = client.groups.Where(ug => ug.groupTypes.Any(gt =>gt == "Unified")).Take(5).ExecuteAsync().Result.CurrentPage.ToList();
-                Console.WriteLine();
-                Console.WriteLine("GET /groups?$top=5&$filter=groupType eq 'Unified'");
-                Console.WriteLine();
-                foreach (Igroup _group in groups)
-                {
-                    Console.WriteLine("    Unified Group: {0}", _group.displayName);
-
-                    try
-                    {
-                        //get group members
-                        List<IdirectoryObject> unifiedGroupMembers = client.groups.GetById(_group.id).members.ExecuteAsync().Result.CurrentPage.ToList();
-                        if (unifiedGroupMembers.Count == 0)
-                        {
-                            Console.WriteLine("      no members for group");
-                        }
-                        foreach (IdirectoryObject _member in unifiedGroupMembers)
-                        {
-                            if (_member is Iuser)
-                            {
-                                Iuser memberUser = (Iuser)_member;
-                                Console.WriteLine("        User: {0} ", memberUser.displayName);
-                            }
-                        }
-
-                        //get group files
-                        IList<IdriveItem> unifiedGroupFiles = client.groups.GetById(_group.id).drive.root.children.Take(5).ExecuteAsync().Result.CurrentPage.ToList();
-                        if (unifiedGroupFiles.Count == 0)
-                        {
-                            Console.WriteLine("      no files for group");
-                        }
-                        foreach (IdriveItem _file in unifiedGroupFiles)
-                        {
-                            Console.WriteLine("        file: {0} url: {1}", _file.name, _file.webUrl);
-                        }    
-                                        
-                        //get group conversations
-                        List<Iconversation> unifiedGroupConversations = client.groups.GetById(_group.id).Conversations.ExecuteAsync().Result.CurrentPage.ToList();
-                        if(unifiedGroupConversations.Count == 0)
-                        {                                                    
-                            Console.WriteLine("      no conversations for group");
-                        }
-                        foreach (Iconversation _conversation in unifiedGroupConversations)
-                        {
-                            Console.WriteLine("        conversation topic: {0} ", _conversation.Topic);
-                        }
-
-                        //get group events
-                        List<Ievent> unifiedGroupEvents = client.groups.GetById(_group.id).Events.ExecuteAsync().Result.CurrentPage.ToList();
-                        if(unifiedGroupEvents.Count == 0)
-                        {                                                    
-                            Console.WriteLine("      no meeting events for group");
-                        }
-                        foreach (Ievent _event in unifiedGroupEvents)
-                        {
-                            Console.WriteLine("        meeting event subject: {0} ", _event.Subject);
-                        }
-                    }
-                    catch (Exception)
-                    {
-                        Console.Write("Unexpected exception when enumerating group contents and members");
-                    }
-                }
-                #endregion
-
-                #region Get the top 5 users and create a recipient list (to be used later)
-                IList<recipient> messageToList = new List<recipient>();
-
-                // GET /users?$top=5
-                List<Iuser> users = client.users.Take(10).ExecuteAsync().Result.CurrentPage.ToList();
-                Console.WriteLine();
-                Console.WriteLine("GET /users?$top=10 and their files");
-                foreach (Iuser _user in users)
-                {
-                    Console.WriteLine(
-                        "\n    User Id: {0}  upn: {1} license assigned: {2}", 
-                        _user.id, 
-                        _user.userPrincipalName, 
-                        _user.assignedPlans != null && _user.assignedPlans.Count != 0 ? "true" : "false");
-                    if (_user.assignedPlans.Count != 0)
-                    {
-                        recipient messageTo = new recipient();
-                        emailAddress emailAdress = new emailAddress();
-                        emailAdress.Address = _user.userPrincipalName;
-                        emailAdress.Name = _user.displayName;
-                        messageTo.EmailAddress = emailAdress;
-                        messageToList.Add(messageTo);
-                    }
-                }
-
-                // also add current signed in user to the recipient list IF they have a license
-                if (user.assignedPlans.Count != 0)
-                {               
-                    recipient messageTo = new recipient();
-                    emailAddress emailAdress = new emailAddress();
-                    emailAdress.Address = user.userPrincipalName;
-                    emailAdress.Name = user.displayName;
-                    messageTo.EmailAddress = emailAdress;
-                    messageToList.Add(messageTo);
-                }
-                #endregion
-
-                #region Send mail to signed in user and the recipient list
-                // POST /me/SendMail
- 
-                Console.WriteLine();
-                Console.WriteLine("POST /me/sendmail");
-                Console.WriteLine();
-
+                    groupTypes = new List<string> { "Unified" },
+                    displayName = "Unified group " + suffix,
+                    description = "Group " + suffix + " is the best ever",
+                    mailNickname = "Group" + suffix,
+                    mailEnabled = true,
+                    securityEnabled = false
+                };
                 try
                 {
-                    itemBody messageBody = new itemBody();
-                    messageBody.Content = "<report pending>";
-                    messageBody.ContentType = BodyType.Text;
-
-                    message newMessage = new message();
-                    newMessage.Subject = string.Format("\nCompleted test run from console app at {0}.", currentDateTime);
-                    newMessage.ToRecipients = (IList<recipient>)messageToList;
-                    newMessage.Body = (itemBody)messageBody;
-
-                    client.me.SendMailAsync(newMessage, true);
-
-                    Console.WriteLine("\nMail sent to {0}", user.displayName);
+                    client.groups.AddgroupAsync(uGroup).Wait();
+                    Console.WriteLine("\nCreated unified group {0}", uGroup.displayName);
                 }
                 catch (Exception)
                 {
-                    Console.WriteLine("\nUnexpected Error attempting to send an email");
-                    throw;
+                    Console.WriteLine("\nIssue creating the group {0}", uGroup.displayName);
+                    uGroup = null;
                 }
-                #endregion
+            }
+
+            #endregion
+
+            #region Add group members
+            client.Context.SaveChanges();
+            group retreivedGroup = new group();
+            // get a set of users to add
+            List<Iuser> members = client.users.Take(3).ExecuteAsync().Result.CurrentPage.ToList();
+
+            // Either add to newly created group, OR add to an existing group
+            if (uGroup != null)
+            {
+                retreivedGroup = (group) client.groups.GetById(uGroup.id).ExecuteAsync().Result;
+            }
+            else
+            {
+                List<Igroup> foundGroups = client.groups.Where(ug => ug.groupTypes.Any(gt => gt == "Unified")).Take(5).ExecuteAsync().Result.CurrentPage.ToList();
+                if (foundGroups != null && foundGroups.Count > 0)
+                {
+                    retreivedGroup = foundGroups.First() as group;
+                }
+            }
+            if (retreivedGroup != null)
+            {
+                // Add users
+                foreach (Iuser _user in members)
+                {
+                    try
+                    {                       
+                        retreivedGroup.members.Add(_user as directoryObject);
+                        retreivedGroup.UpdateAsync().Wait();
+                        Console.WriteLine("\nAdding {0} to group {1}", _user.userPrincipalName, uGroup.displayName);
+                    }
+                    catch (Exception e)
+                    {
+                        Console.WriteLine("\nError assigning member to group. {0} {1}",
+                             e.Message, e.InnerException != null ? e.InnerException.Message : "");
+                    }
+                }
+
+                // now remove the added users
+                foreach (user _user in members)
+                {
+                    try
+                    {
+                        retreivedGroup.members.Remove(_user as directoryObject);
+                        retreivedGroup.UpdateAsync().Wait();
+                        Console.WriteLine("\nRemoved {0} from group {1}", _user.userPrincipalName, retreivedGroup.displayName);
+                    }
+                    catch (Exception e)
+                    {
+                        Console.WriteLine("\nError removing member from group. {0} {1}",
+                             e.Message, e.InnerException != null ? e.InnerException.Message : "");
+                    }
+                }
+            }
+            else
+            {
+                Console.WriteLine("\nCan't find any unified groups to add members to.\n");
+            }
+
+            #endregion
+
+            #region Get groups
+            // GET /groups?$top=5
+            List<Igroup> groups = client.groups.Take(5).ExecuteAsync().Result.CurrentPage.ToList();
+            Console.WriteLine();
+            Console.WriteLine("GET /groups?$top=5");
+            Console.WriteLine();
+            foreach (Igroup _group in groups)
+            {
+                Console.WriteLine("    Group Id: {0}  upn: {1}", _group.id, _group.displayName);
+                foreach (string _type in _group.groupTypes)
+                {
+                    if (_type == "Unified")
+                    {
+                        Console.WriteLine(": This is a Unifed Group");
+                    }
+                }
+            }
+            #endregion
+
+            #region Get the top 5 UNIFIED groups and view their associated content
+            // GET /groups?$top=5&$filter=groupType eq 'Unified'
+            groups = client.groups.Where(ug => ug.groupTypes.Any(gt => gt == "Unified")).Take(5).ExecuteAsync().Result.CurrentPage.ToList();
+            Console.WriteLine();
+            Console.WriteLine("GET /groups?$top=5&$filter=groupType eq 'Unified'");
+            Console.WriteLine();
+            foreach (Igroup _group in groups)
+            {
+                Console.WriteLine("    Unified Group: {0}", _group.displayName);
+
+                try
+                {
+                    // get group members
+                    List<IdirectoryObject> unifiedGroupMembers = client.groups.GetById(_group.id).members.ExecuteAsync().Result.CurrentPage.ToList();
+                    if (unifiedGroupMembers.Count == 0)
+                    {
+                        Console.WriteLine("      no members for group");
+                    }
+                    foreach (IdirectoryObject _member in unifiedGroupMembers)
+                    {
+                        if (_member is Iuser)
+                        {
+                            Iuser memberUser = (Iuser)_member;
+                            Console.WriteLine("        User: {0} ", memberUser.displayName);
+                        }
+                    }
+
+                    //get group files
+                    IList<IdriveItem> unifiedGroupFiles = client.groups.GetById(_group.id).drive.root.children.Take(5).ExecuteAsync().Result.CurrentPage.ToList();
+                    if (unifiedGroupFiles.Count == 0)
+                    {
+                        Console.WriteLine("      no files for group");
+                    }
+                    foreach (IdriveItem _file in unifiedGroupFiles)
+                    {
+                        Console.WriteLine("        file: {0} url: {1}", _file.name, _file.webUrl);
+                    }
+
+                    //get group conversations
+                    List<Iconversation> unifiedGroupConversations = client.groups.GetById(_group.id).conversations.ExecuteAsync().Result.CurrentPage.ToList();
+                    if (unifiedGroupConversations.Count == 0)
+                    {
+                        Console.WriteLine("      no conversations for group");
+                    }
+                    foreach (Iconversation _conversation in unifiedGroupConversations)
+                    {
+                        Console.WriteLine("        conversation topic: {0} ", _conversation.topic);
+                    }
+
+                    //get group events
+                    List<Ievent> unifiedGroupEvents = client.groups.GetById(_group.id).events.ExecuteAsync().Result.CurrentPage.ToList();
+                    if (unifiedGroupEvents.Count == 0)
+                    {
+                        Console.WriteLine("      no meeting events for group");
+                    }
+                    foreach (Ievent _event in unifiedGroupEvents)
+                    {
+                        Console.WriteLine("        meeting event subject: {0} ", _event.subject);
+                    }
+                }
+                catch (Exception)
+                {
+                    Console.Write("Unexpected exception when enumerating group contents and members");
+                }
+            }
+            #endregion
+
+            #region Get the top 5 users and create a recipient list (to be used later)
+            IList<recipient> messageToList = new List<recipient>();
+
+            // GET /users?$top=5
+            List<Iuser> users = client.users.Take(10).ExecuteAsync().Result.CurrentPage.ToList();
+            Console.WriteLine();
+            Console.WriteLine("GET /users?$top=10 and their files");
+            foreach (Iuser _user in users)
+            {
+                Console.WriteLine(
+                    "\n    User Id: {0}  upn: {1} license assigned: {2}",
+                    _user.id,
+                    _user.userPrincipalName,
+                    _user.assignedPlans != null && _user.assignedPlans.Count != 0 ? "true" : "false");
+                if (_user.assignedPlans.Count != 0)
+                {
+                    recipient messageTo = new recipient();
+                    emailAddress emailAdress = new emailAddress();
+                    emailAdress.address = _user.userPrincipalName;
+                    emailAdress.name = _user.displayName;
+                    messageTo.emailAddress = emailAdress;
+                    messageToList.Add(messageTo);
+                }
+            }
+
+            // also add current signed in user to the recipient list IF they have a license
+            if (user.assignedPlans.Count != 0)
+            {
+                recipient messageTo = new recipient();
+                emailAddress emailAdress = new emailAddress();
+                emailAdress.address = user.userPrincipalName;
+                emailAdress.name = user.displayName;
+                messageTo.emailAddress = emailAdress;
+                messageToList.Add(messageTo);
+            }
+            #endregion
+
+            #region Send mail to signed in user and the recipient list
+            // POST /me/SendMail
+
+            Console.WriteLine();
+            Console.WriteLine("POST /me/sendmail");
+            Console.WriteLine();
+
+            try
+            {
+                itemBody messageBody = new itemBody();
+                messageBody.content = "<report pending>";
+                messageBody.contentType = BodyType.text;
+
+                message newMessage = new message();
+                newMessage.subject = string.Format("\nCompleted test run from console app at {0}.", currentDateTime);
+                newMessage.toRecipients = (IList<recipient>)messageToList;
+                newMessage.body = (itemBody)messageBody;
+
+                client.me.sendMailAsync(newMessage, true);
+
+                Console.WriteLine("\nMail sent to {0}", user.displayName);
+            }
+            catch (Exception)
+            {
+                Console.WriteLine("\nUnexpected Error attempting to send an email");
+                throw;
+            }
+            #endregion
 
         }
         public static void AppMode()
@@ -532,7 +573,7 @@ namespace MicrosoftGraphSampleConsole
             try
             {
                 string email = "sarad@adatumisv.onmicrosoft.com";
-                List<Imessage> messages = client.users.GetById(email).Messages.Take(3).
+                List<Imessage> messages = client.users.GetById(email).messages.Take(3).
                     ExecuteAsync().Result.CurrentPage.ToList();
                 Console.WriteLine();
                 Console.WriteLine("GET /user/{0}/messages?$top=3", email);
@@ -543,7 +584,7 @@ namespace MicrosoftGraphSampleConsole
                 }
                 foreach (Imessage message in messages)
                 {
-                    Console.WriteLine("    Message: {0} received {1} ", message.Subject, message.ReceivedDateTime);
+                    Console.WriteLine("    Message: {0} received {1} ", message.subject, message.receivedDateTime);
                 }
             }
             catch (Exception e)
