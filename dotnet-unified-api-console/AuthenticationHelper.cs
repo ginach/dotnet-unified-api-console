@@ -64,7 +64,7 @@ namespace MicrosoftGraphSampleConsole
         {
             if (TokenForUser == null)
             {
-                var redirectUri = new Uri("http://localhost:44323");
+                var redirectUri = new Uri(Constants.redirectUriForUserAuthn);
                 string authority = Constants.AuthString + "common";
                 AuthenticationContext authenticationContext = new AuthenticationContext(authority, false);
                 AuthenticationResult userAuthnResult = authenticationContext.AcquireToken(Constants.ResourceUrl,
@@ -83,6 +83,7 @@ namespace MicrosoftGraphSampleConsole
         /// <returns>ActiveDirectoryClient for User.</returns>
         public static GraphService GetActiveDirectoryClientAsUser()
         {
+            
             Uri serviceRoot = new Uri(Constants.Url);
             GraphService graphClient = new GraphService(serviceRoot, 
                 async () => await AcquireTokenAsyncForUser()); 
