@@ -562,7 +562,18 @@ namespace MicrosoftGraphSampleConsole
             #endregion
 
             #region clean up (delete any created items)
-
+            if (uGroup != null)
+            {
+                try
+                {
+                    uGroup.DeleteAsync().Wait();
+                    Console.WriteLine("\nDeleted group {0}", uGroup.displayName);
+                }
+                catch (Exception e)
+                {
+                    Console.Write("Couldn't delete group.  Error detail: {0}", e.InnerException.Message);
+                }
+            }
             #endregion
 
         }

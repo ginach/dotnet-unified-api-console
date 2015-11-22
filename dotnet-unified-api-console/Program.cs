@@ -38,6 +38,8 @@ namespace MicrosoftGraphSampleConsole
                     break;
                 case 'b':
                     Console.WriteLine("\nRunning app-only mode, followed by user mode\n\n");
+                    Requests.AppMode();
+                    Requests.UserMode();
                     break;
                 case 'u':
                     Console.WriteLine("\nRunning in user mode\n\n");

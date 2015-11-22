@@ -50,7 +50,7 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="Microsoft.Graph, Version=0.2.5.8599, Culture=neutral, processorArchitecture=MSIL">
+    <Reference Include="Microsoft.Graph, Version=0.8.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
       <HintPath>..\packages\Microsoft.Graph.0.8.0-rc\lib\portable-net4+sl5+win+wpa+wp8\Microsoft.Graph.dll</HintPath>
       <Private>True</Private>
     </Reference>
