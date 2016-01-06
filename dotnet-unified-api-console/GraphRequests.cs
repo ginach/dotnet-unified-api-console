@@ -50,24 +50,7 @@ namespace MicrosoftGraphSampleConsole
             Console.WriteLine("\nStarting user-mode requests...");
             Console.WriteLine("\n=============================\n\n");
 
-            /*#region Get the signed in user's details, manager, reports and group memberships
-            //// GET /me
-
-            user user2 = new user();
-            try
-            {
-
-                user2 = (user)client.me.ExecuteAsync().Result;
-                Console.WriteLine();
-                Console.WriteLine("GET /me");
-                Console.WriteLine();
-                Console.WriteLine("    Id: {0}  UPN: {1}", user2.id, user2.userPrincipalName);
-            }
-            catch (Exception e)
-            {
-                Console.WriteLine("\nError getting /me user {0} {1}",
-                     e.Message, e.InnerException != null ? e.InnerException.Message : "");
-            }*/
+            #region Get the signed in user's details, manager, reports and group memberships
 
             var user = new User();
             try
@@ -102,7 +85,7 @@ namespace MicrosoftGraphSampleConsole
             try
             {
                 // GET /me/directReports
-                var directsPage = await graphClient.Me.DirectReports.Request().GetAsync(); //client.me.directReports.ExecuteAsync().Result.CurrentPage.ToList();
+                var directsPage = await graphClient.Me.DirectReports.Request().GetAsync();
                 Console.WriteLine();
                 Console.WriteLine("GET /me/directReports");
                 Console.WriteLine();
@@ -178,6 +161,7 @@ namespace MicrosoftGraphSampleConsole
                 Console.WriteLine("\nError getting group memberships {0} {1}",
                      e.Message, e.InnerException != null ? e.InnerException.Message : "");
             }
+            #endregion
 
             #region Get the signed in user's files, who last modified them, messages and events, and personal contacts
             try
@@ -418,7 +402,6 @@ namespace MicrosoftGraphSampleConsole
 
                 #region Get the first 3 UNIFIED groups and view their associated content
                 // GET /groups?$top=5&$filter=groupType eq 'Unified'
-                // groups = client.me.memberOf.OfType<Igroup>().Where(ug => ug.groupTypes.Any(gt => gt == "Unified")).Take(3).ExecuteAsync().Result.CurrentPage.ToList();
                 groups = await graphClient.Groups.Request(new List<Option> { new QueryOption("$filter", "groupTypes/any(gt:gt%20eq%20'Unified')") }).Top(3).GetAsync();
                 Console.WriteLine();
                 Console.WriteLine("GET /groups?$top=5&$filter=groupType eq 'Unified'");
