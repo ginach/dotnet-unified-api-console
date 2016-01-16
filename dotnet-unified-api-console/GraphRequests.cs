@@ -489,13 +489,13 @@ namespace MicrosoftGraphSampleConsole
                 #endregion
 
                 #region Get the top 10 users and create a recipient list (to be used later)
-                var messageToList = new ToRecipientsCollectionPage();
+                var messageToList = new List<Recipient>();
 
                 // GET /users?$top=5
                 var users = await graphClient.Users.Request().Top(10).GetAsync();
                 foreach (var _user in users)
                 {
-                    if (_user.AssignedPlans != null && _user.AssignedPlans.Count != 0)
+                    if (_user.AssignedPlans != null && _user.AssignedPlans.Count() != 0)
                     {
                         var emailAdress = new EmailAddress
                         {
@@ -513,7 +513,7 @@ namespace MicrosoftGraphSampleConsole
                 }
 
                 // also add current signed in user to the recipient list IF they have a license
-                if (user.AssignedPlans != null && user.AssignedPlans.Count != 0)
+                if (user.AssignedPlans != null && user.AssignedPlans.Count() != 0)
                 {
                     var emailAdress = new EmailAddress
                     {
