@@ -68,19 +68,19 @@ namespace MicrosoftGraphSampleConsole
                      e.Message, e.InnerException != null ? e.InnerException.Message : "");
             }
 
-            /*try
+            try
             {
                 // get signed in user's picture.  
                 // Drop to REST for this - Client Library doesn't support this yet :(
-                string token = AuthenticationHelper.TokenForUser;
-                string request = "me/Photo/$value";
-                Stream photoStream = Helper.GetRestRequestStream(request, token).Result;
-                Console.WriteLine("Got stream photo");
+                using (var photoStream = await graphClient.Me.Photo.Content.Request().GetAsync())
+                {
+                    Console.WriteLine("Got stream photo");
+                }
             }
             catch (Exception)
             {
                 Console.WriteLine("Failed to get stream");
-            }*/
+            }
 
             try
             {
