@@ -492,7 +492,9 @@ namespace MicrosoftGraphSampleConsole
                 var messageToList = new List<Recipient>();
 
                 // GET /users?$top=5
-                var users = await graphClient.Users.Request().Top(10).GetAsync();
+                // Assigned plans aren't returned by default and *,assignedPlans select semantic doesn't work. Select all the
+                // properties that we care about.
+                var users = await graphClient.Users.Request().Top(10).Select("userPrincipalName,displayName,emailAddress,assignedPlans").GetAsync();
                 foreach (var _user in users)
                 {
                     if (_user.AssignedPlans != null && _user.AssignedPlans.Count() != 0)
@@ -554,7 +556,7 @@ namespace MicrosoftGraphSampleConsole
 
                     await graphClient.Me.SendMail(newMessage, true).Request().PostAsync();
 
-                    Console.WriteLine("\nMail sent to {0}", user.DisplayName);
+                    Console.WriteLine("\nMail sent from {0}", user.DisplayName);
                 }
                 catch (Exception)
                 {
