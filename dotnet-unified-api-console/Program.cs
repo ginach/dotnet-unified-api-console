@@ -33,18 +33,24 @@ namespace MicrosoftGraphSampleConsole
             {
                 case 'a':
                     Console.WriteLine("\nRunning app-only mode\n\n");
-                    Requests.AppMode();
+                    var appModeTask = Task.Run(() => Requests.AppMode());
+                    appModeTask.Wait();
+
                     break;
                 case 'b':
                     Console.WriteLine("\nRunning app-only mode, followed by user mode\n\n");
-                    Requests.AppMode();
-                    var appModeTask = Task.Run(() => Requests.UserMode());
-                    appModeTask.Wait();
+                    var bothAppModeTask = Task.Run(() => Requests.AppMode());
+                    bothAppModeTask.Wait();
+
+                    var bothUserModeTask = Task.Run(() => Requests.UserMode());
+                    bothUserModeTask.Wait();
+
                     break;
                 case 'u':
                     Console.WriteLine("\nRunning in user mode\n\n");
                     var userModeTask = Task.Run(() => Requests.UserMode());
                     userModeTask.Wait();
+
                     break;
                 default:
                     Console.WriteLine("\nSelection not recognized. Running in user mode\n\n");

@@ -26,9 +26,7 @@ namespace MicrosoftGraphSampleConsole
             //*********************************************************************
             try
             {
-                graphClient = AuthenticationHelper.GetActiveDirectoryClientAsUser();
-
-                await graphClient.AuthenticateAsync();
+                graphClient = await AuthenticationHelper.GetActiveDirectoryClientAsUser() as GraphServiceClient;
             }
             catch (Exception ex)
             {
@@ -341,15 +339,14 @@ namespace MicrosoftGraphSampleConsole
                     }
                 }
 
-                // Graph doesn't currently support writing to /groups/id/members. Uncomment when supported.
-                /*if (retreivedGroup != null)
+                if (retreivedGroup != null)
                 {
                     // Add users
                     foreach (var _user in members)
                     {
                         try
                         {
-                            await graphClient.Groups[retreivedGroup.Id].Members.Request().AddAsync(new User { Id = _user.Id });
+                            await graphClient.Groups[retreivedGroup.Id].Members.References.Request().AddAsync(new User { Id = _user.Id });
                             Console.WriteLine("\nAdding {0} to group {1}", _user.UserPrincipalName, uGroup.DisplayName);
                         }
                         catch (Exception e)
@@ -364,7 +361,7 @@ namespace MicrosoftGraphSampleConsole
                     {
                         try
                         {
-                            await graphClient.Groups[retreivedGroup.Id].Members[_user.Id].Request().DeleteAsync();
+                            await graphClient.Groups[retreivedGroup.Id].Members[_user.Id].Reference.Request().DeleteAsync();
                             Console.WriteLine("\nRemoved {0} from group {1}", _user.UserPrincipalName, retreivedGroup.DisplayName);
                         }
                         catch (Exception e)
@@ -377,7 +374,7 @@ namespace MicrosoftGraphSampleConsole
                 else
                 {
                     Console.WriteLine("\nCan't find any unified groups to add members to.\n");
-                }*/
+                }
 
                 #endregion
 
@@ -581,21 +578,26 @@ namespace MicrosoftGraphSampleConsole
                     }
                 }
                 #endregion
+
+                if (graphClient != null)
+                {
+                    graphClient.Dispose();
+                }
             }
 
         }
-        public static async void AppMode()
+        public static async Task AppMode()
         {
             // record start DateTime of execution
             string currentDateTime = DateTime.Now.ToUniversalTime().ToString();
+            GraphServiceClient graphClient;
             #region Setup Microsoft Graph Client for app
             //*********************************************************************
             // setup Microsoft Graph Client for app
             //*********************************************************************
             try
             {
-                var graphClient = AuthenticationHelper.GetActiveDirectoryClientAsApplication();
-                await graphClient.AuthenticateAsync();
+                graphClient = await AuthenticationHelper.GetActiveDirectoryClientAsApplication() as GraphServiceClient;
             }
             catch (Exception ex)
             {
@@ -640,6 +642,13 @@ namespace MicrosoftGraphSampleConsole
             {
                 Console.WriteLine("\nError getting files or content {0} {1}",
                      e.Message, e.InnerException != null ? e.InnerException.Message : "");
+            }
+            finally
+            {
+                if (graphClient != null)
+                {
+                    graphClient.Dispose();
+                }
             }
             #endregion
         }

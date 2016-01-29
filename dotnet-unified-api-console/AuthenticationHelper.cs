@@ -2,6 +2,7 @@
 using System.Threading.Tasks;
 using Microsoft.IdentityModel.Clients.ActiveDirectory;
 using Microsoft.Graph;
+using Microsoft.Graph.WindowsForms;
 
 namespace MicrosoftGraphSampleConsole
 {
@@ -13,23 +14,13 @@ namespace MicrosoftGraphSampleConsole
         /// Get Active Directory Client for Application.
         /// </summary>
         /// <returns>ActiveDirectoryClient for Application.</returns>
-        public static GraphServiceClient GetActiveDirectoryClientAsApplication()
+        public static Task<IGraphServiceClient> GetActiveDirectoryClientAsApplication()
         {
-            Uri servicePointUri = new Uri(Constants.Url);
-            Uri serviceRoot = new Uri(servicePointUri, Constants.TenantId);
-            return new GraphServiceClient(
-                new AppConfig
-                {
-                    ActiveDirectoryAppId = Constants.ClientIdForAppAuthn,
-                    ActiveDirectoryClientSecret = Constants.ClientSecret,
-                    ActiveDirectoryReturnUrl = Constants.redirectUriForUserAuthn,
-                    ActiveDirectoryServiceEndpointUrl = Constants.Url,
-                    ActiveDirectoryServiceResource = Constants.ResourceUrl,
-                },
-                new AdalCredentialCache(),
-                new HttpProvider(),
-                new AdalServiceInfoProvider(),
-                ClientType.Business);
+            return BusinessClientExtensions.GetAuthenticatedClientUsingAppOnlyAuthentication(
+                Constants.ClientIdForAppAuthn,
+                Constants.redirectUriForUserAuthn,
+                Constants.ClientSecret,
+                Constants.TenantId);
         }
 
         /// <summary>
@@ -66,21 +57,11 @@ namespace MicrosoftGraphSampleConsole
         /// Get Active Directory Client for User.
         /// </summary>
         /// <returns>ActiveDirectoryClient for User.</returns>
-        public static GraphServiceClient GetActiveDirectoryClientAsUser()
+        public static Task<IGraphServiceClient> GetActiveDirectoryClientAsUser()
         {
-            return new GraphServiceClient(
-                new AppConfig
-                {
-                    ActiveDirectoryAppId = Constants.ClientIdForUserAuthn,
-                    //ActiveDirectoryClientSecret = clientSecret,
-                    ActiveDirectoryReturnUrl = Constants.redirectUriForUserAuthn,
-                    ActiveDirectoryServiceEndpointUrl = Constants.Url,
-                    ActiveDirectoryServiceResource = Constants.ResourceUrl,
-                },
-                new AdalCredentialCache(),
-                new HttpProvider(),
-                new AdalServiceInfoProvider(),
-                ClientType.Business);
+            return BusinessClientExtensions.GetAuthenticatedClient(
+                Constants.ClientIdForUserAuthn,
+                Constants.redirectUriForUserAuthn);
         }
     }
 }
