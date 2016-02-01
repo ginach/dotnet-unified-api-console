@@ -53,11 +53,11 @@
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="Microsoft.Graph, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\packages\Microsoft.Graph.0.9.13-rc\lib\net451\Microsoft.Graph.dll</HintPath>
+      <HintPath>..\packages\Microsoft.Graph.0.9.14-rc\lib\net451\Microsoft.Graph.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="Microsoft.Graph.WindowsForms, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\packages\Microsoft.Graph.0.9.13-rc\lib\net451\Microsoft.Graph.WindowsForms.dll</HintPath>
+      <HintPath>..\packages\Microsoft.Graph.0.9.14-rc\lib\net451\Microsoft.Graph.WindowsForms.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="Microsoft.IdentityModel.Clients.ActiveDirectory, Version=2.19.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">

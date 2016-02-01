@@ -561,6 +561,92 @@ namespace MicrosoftGraphSampleConsole
                 }
                 #endregion
 
+                #region OneDrive functionality
+
+                try
+                {
+                    var rootItems = await graphClient.Me.Drive.Root.Children.Request().Top(5).GetAsync();
+
+                    if (rootItems.CurrentPage == null || rootItems.Count == 0)
+                    {
+                        Console.WriteLine("      no items found.");
+                    }
+                    foreach (var driveItem in rootItems)
+                    {
+                        Console.WriteLine("        item name: {0}     resource ID: {1}", driveItem.Name, driveItem.Id);
+                    }
+                }
+                catch (Exception)
+                {
+                    Console.WriteLine("\nUnexpected error attempting to get root items.");
+                }
+
+                DriveItem folder = null;
+
+                try
+                {
+                    folder = await graphClient.Me.Drive.Root.Children.Request().AddAsync(
+                        new DriveItem
+                        {
+                            Folder = new Folder(),
+                            Name = string.Format("Folder {0}", Helper.GetRandomString(5))
+                        });
+
+                    Console.WriteLine("\nCreated folder {0}", folder.Name);
+                }
+                catch (Exception)
+                {
+                    Console.WriteLine("\nUnexpected Error attempting to create folder.");
+                }
+
+                if (folder != null)
+                {
+                    try
+                    {
+                        var link = await graphClient.Me.Drive.Items[folder.Id].CreateLink("view").Request().PostAsync();
+
+                        Console.WriteLine("\nCreated link {0}", link.Id);
+                    }
+                    catch (Exception)
+                    {
+                        Console.WriteLine("\nUnexpected Error attempting to create link for folder.");
+                    }
+
+                    try
+                    {
+                        await graphClient.Me.Drive.Items[folder.Id].Request().DeleteAsync();
+
+                        Console.WriteLine("\nDeleted folder {0}", folder.Name);
+                    }
+                    catch (Exception)
+                    {
+                        Console.WriteLine("\nUnexpected Error attempting to delete folder.");
+                    }
+                }
+
+                Console.WriteLine("\nSearch for drive items (enter search string):");
+                var driveItemsSearchString = Console.ReadLine();
+
+                try
+                {
+                    var driveSearchResults = await graphClient.Me.Drive.Root.Search(driveItemsSearchString).Request().Top(10).GetAsync();
+
+                    if (driveSearchResults.CurrentPage == null || driveSearchResults.Count == 0)
+                    {
+                        Console.WriteLine("      no items found.");
+                    }
+                    foreach (var driveItem in driveSearchResults)
+                    {
+                        Console.WriteLine("        item name: {0}     resource ID: {1}", driveItem.Name, driveItem.Id);
+                    }
+                }
+                catch (Exception)
+                {
+                    Console.WriteLine("\nUnexpected Error attempting to create folder.");
+                }
+
+                #endregion
+
             }
             finally
             {
