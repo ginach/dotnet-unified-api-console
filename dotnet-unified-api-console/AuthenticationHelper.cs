@@ -16,10 +16,13 @@ namespace MicrosoftGraphSampleConsole
         /// <returns>ActiveDirectoryClient for Application.</returns>
         public static Task<IGraphServiceClient> GetActiveDirectoryClientAsApplication()
         {
-            return BusinessClientExtensions.GetAuthenticatedClientUsingAppOnlyAuthentication(
-                Constants.ClientIdForAppAuthn,
-                Constants.redirectUriForUserAuthn,
-                Constants.ClientSecret,
+            return GraphClientExtensions.GetAuthenticatedClientUsingAppOnlyAuthenticationAsync(
+                new GraphAppConfig
+                {
+                    AppId = Constants.ClientIdForAppAuthn,
+                    ReturnUrl = Constants.redirectUriForUserAuthn,
+                    ClientSecret = Constants.ClientSecret,
+                },
                 Constants.TenantId);
         }
 
@@ -59,9 +62,12 @@ namespace MicrosoftGraphSampleConsole
         /// <returns>ActiveDirectoryClient for User.</returns>
         public static Task<IGraphServiceClient> GetActiveDirectoryClientAsUser()
         {
-            return BusinessClientExtensions.GetAuthenticatedClient(
-                Constants.ClientIdForUserAuthn,
-                Constants.redirectUriForUserAuthn);
+            return GraphClientExtensions.GetAuthenticatedClientAsync(
+                new GraphAppConfig
+                {
+                    AppId = Constants.ClientIdForUserAuthn,
+                    ReturnUrl = Constants.redirectUriForUserAuthn,
+                });
         }
     }
 }

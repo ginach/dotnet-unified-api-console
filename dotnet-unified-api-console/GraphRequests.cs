@@ -57,7 +57,7 @@ namespace MicrosoftGraphSampleConsole
                 user = await graphClient.Me.Request().GetAsync();
                 Console.WriteLine();
                 Console.WriteLine("GET /me");
-                Console.WriteLine();
+                Console.WriteLine(); 
                 Console.WriteLine("    Id: {0}  UPN: {1}", user.Id, user.UserPrincipalName);
             }
             catch (Exception e)
