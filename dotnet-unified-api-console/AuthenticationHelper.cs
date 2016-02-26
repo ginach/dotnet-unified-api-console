@@ -1,8 +1,6 @@
 ﻿using System;
 using System.Threading.Tasks;
 using Microsoft.IdentityModel.Clients.ActiveDirectory;
-using Microsoft.Graph;
-using Microsoft.Graph.WindowsForms;
 
 namespace MicrosoftGraphSampleConsole
 {
@@ -11,28 +9,19 @@ namespace MicrosoftGraphSampleConsole
         public static string TokenForUser;
 
         /// <summary>
-        /// Get Active Directory Client for Application.
+        /// Get Token for Application.
         /// </summary>
-        /// <returns>ActiveDirectoryClient for Application.</returns>
-        public static Task<IGraphServiceClient> GetActiveDirectoryClientAsApplication()
+        /// <returns>Token for application.</returns>
+        public static string GetTokenForApplication()
         {
-            return GraphClientExtensions.GetAuthenticatedClientUsingAppOnlyAuthenticationAsync(
-                new GraphAppConfig
-                {
-                    AppId = Constants.ClientIdForAppAuthn,
-                    ReturnUrl = Constants.redirectUriForUserAuthn,
-                    ClientSecret = Constants.ClientSecret,
-                },
-                Constants.TenantId);
-        }
-
-        /// <summary>
-        /// Async task to acquire token for User.
-        /// </summary>
-        /// <returns>Token for user.</returns>
-        public static Task<string> AcquireTokenAsyncForUser()
-        {
-            return Task.FromResult(GetTokenForUser());
+            string authority = Constants.AuthString + Constants.TenantId;
+            AuthenticationContext authenticationContext = new AuthenticationContext(authority, false);
+            // Config for OAuth client credentials 
+            ClientCredential clientCred = new ClientCredential(Constants.ClientIdForAppAuthn, Constants.ClientSecret);
+            AuthenticationResult authenticationResult = authenticationContext.AcquireToken(Constants.ResourceUrl,
+                clientCred);
+            string token = authenticationResult.AccessToken;
+            return token;
         }
 
         /// <summary>
@@ -54,20 +43,6 @@ namespace MicrosoftGraphSampleConsole
             }
 
             return TokenForUser;
-        }
-
-        /// <summary>
-        /// Get Active Directory Client for User.
-        /// </summary>
-        /// <returns>ActiveDirectoryClient for User.</returns>
-        public static Task<IGraphServiceClient> GetActiveDirectoryClientAsUser()
-        {
-            return GraphClientExtensions.GetAuthenticatedClientAsync(
-                new GraphAppConfig
-                {
-                    AppId = Constants.ClientIdForUserAuthn,
-                    ReturnUrl = Constants.redirectUriForUserAuthn,
-                });
         }
     }
 }

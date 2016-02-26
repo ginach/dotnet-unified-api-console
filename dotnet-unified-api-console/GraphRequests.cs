@@ -3,7 +3,8 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.IO;
+using System.Net.Http;
+using System.Net.Http.Headers;
 using System.Threading.Tasks;
 using Microsoft.Graph;
 
@@ -26,7 +27,14 @@ namespace MicrosoftGraphSampleConsole
             //*********************************************************************
             try
             {
-                graphClient = await AuthenticationHelper.GetActiveDirectoryClientAsUser() as GraphServiceClient;
+                graphClient = new GraphServiceClient(
+                    new DelegateAuthenticationProvider(
+                        (requestMessage) =>
+                        {
+                            requestMessage.Headers.Authorization = new AuthenticationHeaderValue("bearer", AuthenticationHelper.GetTokenForUser());
+
+                            return Task.FromResult(0);
+                        }));
             }
             catch (Exception ex)
             {
@@ -347,7 +355,7 @@ namespace MicrosoftGraphSampleConsole
                         try
                         {
                             await graphClient.Groups[retreivedGroup.Id].Members.References.Request().AddAsync(new User { Id = _user.Id });
-                            Console.WriteLine("\nAdding {0} to group {1}", _user.UserPrincipalName, uGroup.DisplayName);
+                            Console.WriteLine("\nAdding {0} to group {1}", _user.UserPrincipalName, retreivedGroup.DisplayName);
                         }
                         catch (Exception e)
                         {
@@ -683,7 +691,14 @@ namespace MicrosoftGraphSampleConsole
             //*********************************************************************
             try
             {
-                graphClient = await AuthenticationHelper.GetActiveDirectoryClientAsApplication() as GraphServiceClient;
+                graphClient = new GraphServiceClient(
+                    new DelegateAuthenticationProvider(
+                        (requestMessage) =>
+                        {
+                            requestMessage.Headers.Authorization = new AuthenticationHeaderValue("bearer", AuthenticationHelper.GetTokenForApplication());
+
+                            return Task.FromResult(0);
+                        }));
             }
             catch (Exception ex)
             {
