@@ -7,6 +7,7 @@ using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Threading.Tasks;
 using Microsoft.Graph;
+using System.Threading;
 
 #endregion
 
@@ -16,7 +17,7 @@ namespace MicrosoftGraphSampleConsole
     {
         public static GraphServiceClient graphClient;
 
-        public static async Task UserMode()
+        public static void UserMode()
         {
             // record start DateTime of execution
             string currentDateTime = DateTime.Now.ToUniversalTime().ToString();
@@ -62,7 +63,7 @@ namespace MicrosoftGraphSampleConsole
             try
             {
 
-                user = await graphClient.Me.Request().GetAsync();
+                user = graphClient.Me.Request().GetAsync().Result;
                 Console.WriteLine();
                 Console.WriteLine("GET /me");
                 Console.WriteLine(); 
@@ -78,7 +79,7 @@ namespace MicrosoftGraphSampleConsole
             {
                 // get signed in user's picture.  
                 // Drop to REST for this - Client Library doesn't support this yet :(
-                using (var photoStream = await graphClient.Me.Photo.Content.Request().GetAsync())
+                using (var photoStream = graphClient.Me.Photo.Content.Request().GetAsync().Result)
                 {
                     Console.WriteLine("Got stream photo");
                 }
@@ -91,7 +92,7 @@ namespace MicrosoftGraphSampleConsole
             try
             {
                 // GET /me/directReports
-                var directsPage = await graphClient.Me.DirectReports.Request().GetAsync();
+                var directsPage = graphClient.Me.DirectReports.Request().GetAsync().Result;
                 Console.WriteLine();
                 Console.WriteLine("GET /me/directReports");
                 Console.WriteLine();
@@ -120,7 +121,7 @@ namespace MicrosoftGraphSampleConsole
             try
             {
                 // GET /me/manager
-                var manager = await graphClient.Me.Manager.Request().GetAsync();
+                var manager = graphClient.Me.Manager.Request().GetAsync().Result;
                 Console.WriteLine();
                 Console.WriteLine("GET /me/manager");
                 Console.WriteLine();
@@ -130,7 +131,7 @@ namespace MicrosoftGraphSampleConsole
                 }
                 else
                 {
-                    var _user = await graphClient.Users[manager.Id].Request().GetAsync();
+                    var _user = graphClient.Users[manager.Id].Request().GetAsync().Result;
                     Console.WriteLine("\nManager      Id: {0}  UPN: {1}", _user.Id, _user.UserPrincipalName);
                     //    }
                 }
@@ -144,7 +145,7 @@ namespace MicrosoftGraphSampleConsole
             // GET /me/memberOf
             try
             {
-                var _groups = await graphClient.Users[user.Id].MemberOf.Request().GetAsync();
+                var _groups = graphClient.Users[user.Id].MemberOf.Request().GetAsync().Result;
                 Console.WriteLine();
                 Console.WriteLine("GET /me/memberOf");
                 Console.WriteLine();
@@ -172,7 +173,7 @@ namespace MicrosoftGraphSampleConsole
             #region Get the signed in user's files, who last modified them, messages and events, and personal contacts
             try
             {
-                var _items = await graphClient.Me.Drive.Root.Children.Request().Top(5).GetAsync();
+                var _items = graphClient.Me.Drive.Root.Children.Request().Top(5).GetAsync().Result;
                 Console.WriteLine();
                 Console.WriteLine("GET /me/files?$top=5");
                 Console.WriteLine();
@@ -201,7 +202,7 @@ namespace MicrosoftGraphSampleConsole
             {
 
                 // GET /me/Messages?$top=5
-                var messages = await graphClient.Me.Messages.Request().Top(5).GetAsync();
+                var messages = graphClient.Me.Messages.Request().Top(5).GetAsync().Result;
                 Console.WriteLine();
                 Console.WriteLine("GET /me/messages?$top=5");
                 Console.WriteLine();
@@ -215,7 +216,7 @@ namespace MicrosoftGraphSampleConsole
                 }
 
                 // GET /me/Events?$top=5
-                var events = await graphClient.Me.Events.Request().Top(5).GetAsync();
+                var events = graphClient.Me.Events.Request().Top(5).GetAsync().Result;
                 Console.WriteLine();
                 Console.WriteLine("GET /me/events?$top=5");
                 Console.WriteLine();
@@ -229,7 +230,7 @@ namespace MicrosoftGraphSampleConsole
                 }
 
                 // GET /me/contacts?$top=5
-                var myContacts = await graphClient.Me.Contacts.Request().Top(5).GetAsync();
+                var myContacts = graphClient.Me.Contacts.Request().Top(5).GetAsync().Result;
                 Console.WriteLine();
                 Console.WriteLine("GET /me/myContacts?$top=5");
                 Console.WriteLine();
@@ -269,11 +270,12 @@ namespace MicrosoftGraphSampleConsole
                         searchString)),
                 };
 
-                searchResults = await graphClient
+                searchResults = graphClient
                     .Users
                     .Request(queryOptions)
                     .Top(5)
-                    .GetAsync();
+                    .GetAsync()
+                    .Result;
             }
             catch (Exception e)
             {
@@ -309,7 +311,7 @@ namespace MicrosoftGraphSampleConsole
                     string suffix = Helper.GetRandomString(5);
                     try
                     {
-                        uGroup = await graphClient.Groups.Request().AddAsync(
+                        uGroup = graphClient.Groups.Request().AddAsync(
                             new Group
                             {
                                 GroupTypes = new List<string> { "Unified" },
@@ -318,7 +320,7 @@ namespace MicrosoftGraphSampleConsole
                                 MailNickname = "Group" + suffix,
                                 MailEnabled = true,
                                 SecurityEnabled = false
-                            });
+                            }).Result;
 
                         Console.WriteLine("\nCreated unified group {0}", uGroup.DisplayName);
                     }
@@ -335,12 +337,18 @@ namespace MicrosoftGraphSampleConsole
 
                 Group retreivedGroup = uGroup;
                 // get a set of users to add
-                var members = await graphClient.Users.Request().Top(3).GetAsync();
+                var members = graphClient.Users.Request().Top(3).GetAsync().Result;
 
                 // Either add to newly created group, OR add to an existing group
                 if (retreivedGroup == null)
                 {
-                    var foundGroups = await graphClient.Groups.Request(new List<Option> { new QueryOption("$filter", "groupTypes/any(gt:gt%20eq%20'Unified')") }).Top(5).GetAsync();
+                    var foundGroups = graphClient
+                        .Groups
+                        .Request(new List<Option> { new QueryOption("$filter", "groupTypes/any(gt:gt%20eq%20'Unified')") })
+                        .Top(5)
+                        .GetAsync()
+                        .Result;
+
                     if (foundGroups.CurrentPage != null && foundGroups.Count > 0)
                     {
                         retreivedGroup = foundGroups.First() as Group;
@@ -354,13 +362,31 @@ namespace MicrosoftGraphSampleConsole
                     {
                         try
                         {
-                            await graphClient.Groups[retreivedGroup.Id].Members.References.Request().AddAsync(new User { Id = _user.Id });
-                            Console.WriteLine("\nAdding {0} to group {1}", _user.UserPrincipalName, retreivedGroup.DisplayName);
+                            graphClient.Groups[retreivedGroup.Id].Members.References.Request().AddAsync(new User { Id = _user.Id }).Wait();
+
+                            Console.WriteLine("\nAdded {0} to group {1}", _user.UserPrincipalName, retreivedGroup.DisplayName);
                         }
-                        catch (Exception e)
+                        catch (AggregateException e)
                         {
-                            Console.WriteLine("\nError assigning member to group. {0} {1}",
-                                 e.Message, e.InnerException != null ? e.InnerException.Message : "");
+                            e.Handle(exception =>
+                            {
+                                var serviceException = exception as ServiceException;
+
+                                string errorDetail = null;
+
+                                if (serviceException != null)
+                                {
+                                    errorDetail = serviceException.ToString();
+                                }
+                                else
+                                {
+                                    errorDetail = exception.Message;
+                                }
+
+                                Console.Write("\nError assigning member to group.\n{0}", errorDetail);
+
+                                return true;
+                            });
                         }
                     }
 
@@ -369,13 +395,31 @@ namespace MicrosoftGraphSampleConsole
                     {
                         try
                         {
-                            await graphClient.Groups[retreivedGroup.Id].Members[_user.Id].Reference.Request().DeleteAsync();
+                            graphClient.Groups[retreivedGroup.Id].Members[_user.Id].Reference.Request().DeleteAsync().Wait();
+
                             Console.WriteLine("\nRemoved {0} from group {1}", _user.UserPrincipalName, retreivedGroup.DisplayName);
                         }
-                        catch (Exception e)
+                        catch (AggregateException e)
                         {
-                            Console.WriteLine("\nError removing member from group. {0} {1}",
-                                 e.Message, e.InnerException != null ? e.InnerException.Message : "");
+                            e.Handle(exception =>
+                            {
+                                var serviceException = exception as ServiceException;
+
+                                string errorDetail = null;
+
+                                if (serviceException != null)
+                                {
+                                    errorDetail = serviceException.ToString();
+                                }
+                                else
+                                {
+                                    errorDetail = exception.Message;
+                                }
+
+                                Console.Write("\nError removing member from group.\n{0}", errorDetail);
+
+                                return true;
+                            });
                         }
                     }
                 }
@@ -388,7 +432,7 @@ namespace MicrosoftGraphSampleConsole
 
                 #region Get groups
                 // GET /groups?$top=5
-                var groups = await graphClient.Groups.Request().Top(5).GetAsync();
+                var groups = graphClient.Groups.Request().Top(5).GetAsync().Result;
                 Console.WriteLine();
                 Console.WriteLine("GET /groups?$top=5");
                 Console.WriteLine();
@@ -407,7 +451,12 @@ namespace MicrosoftGraphSampleConsole
 
                 #region Get the first 3 UNIFIED groups and view their associated content
                 // GET /groups?$top=5&$filter=groupType eq 'Unified'
-                groups = await graphClient.Groups.Request(new List<Option> { new QueryOption("$filter", "groupTypes/any(gt:gt%20eq%20'Unified')") }).Top(3).GetAsync();
+                groups = graphClient
+                    .Groups
+                    .Request(new List<Option> { new QueryOption("$filter", "groupTypes/any(gt:gt%20eq%20'Unified')") })
+                    .Top(3)
+                    .GetAsync()
+                    .Result;
                 Console.WriteLine();
                 Console.WriteLine("GET /groups?$top=5&$filter=groupType eq 'Unified'");
                 Console.WriteLine();
@@ -418,7 +467,7 @@ namespace MicrosoftGraphSampleConsole
                     try
                     {
                         // get group members
-                        var unifiedGroupMembers = await graphClient.Groups[_group.Id].Members.Request().GetAsync();
+                        var unifiedGroupMembers = graphClient.Groups[_group.Id].Members.Request().GetAsync().Result;
                         if (unifiedGroupMembers.CurrentPage == null || unifiedGroupMembers.Count == 0)
                         {
                             Console.WriteLine("      no members for group");
@@ -435,7 +484,7 @@ namespace MicrosoftGraphSampleConsole
                         //get group files
                         try
                         {
-                            var unifiedGroupFiles = await graphClient.Groups[_group.Id].Drive.Root.Children.Request().Top(5).GetAsync();
+                            var unifiedGroupFiles = graphClient.Groups[_group.Id].Drive.Root.Children.Request().Top(5).GetAsync().Result;
                             if (unifiedGroupFiles.CurrentPage == null || unifiedGroupFiles.Count == 0)
                             {
                                 Console.WriteLine("      no files for group");
@@ -453,7 +502,7 @@ namespace MicrosoftGraphSampleConsole
                         //get group conversations
                         try
                         {
-                            var unifiedGroupConversations = await graphClient.Groups[_group.Id].Conversations.Request().GetAsync();
+                            var unifiedGroupConversations = graphClient.Groups[_group.Id].Conversations.Request().GetAsync().Result;
                             if (unifiedGroupConversations.CurrentPage == null || unifiedGroupConversations.Count == 0)
                             {
                                 Console.WriteLine("      no conversations for group");
@@ -471,7 +520,7 @@ namespace MicrosoftGraphSampleConsole
                         //get group events
                         try
                         {
-                            var unifiedGroupEvents = await graphClient.Groups[_group.Id].Events.Request().GetAsync();
+                            var unifiedGroupEvents = graphClient.Groups[_group.Id].Events.Request().GetAsync().Result;
                             if (unifiedGroupEvents.CurrentPage == null || unifiedGroupEvents.Count == 0)
                             {
                                 Console.WriteLine("      no meeting events for group");
@@ -499,7 +548,7 @@ namespace MicrosoftGraphSampleConsole
                 // GET /users?$top=5
                 // Assigned plans aren't returned by default and *,assignedPlans select semantic doesn't work. Select all the
                 // properties that we care about.
-                var users = await graphClient.Users.Request().Top(10).Select("userPrincipalName,displayName,emailAddress,assignedPlans").GetAsync();
+                var users = graphClient.Users.Request().Top(10).Select("userPrincipalName,displayName,emailAddress,assignedPlans").GetAsync().Result;
                 foreach (var _user in users)
                 {
                     if (_user.AssignedPlans != null && _user.AssignedPlans.Count() != 0)
@@ -544,36 +593,55 @@ namespace MicrosoftGraphSampleConsole
                 Console.WriteLine("POST /me/sendmail");
                 Console.WriteLine();
 
+                var messageBody = new ItemBody
+                {
+                    Content = "<report pending>",
+                    ContentType = BodyType.text,
+                };
+
+                var newMessage = new Message
+                {
+                    Subject = string.Format("\nCompleted test run from console app at {0}.", currentDateTime),
+                    Body = messageBody,
+                    ToRecipients = messageToList,
+                };
+
                 try
                 {
-                    var messageBody = new ItemBody
-                    {
-                        Content = "<report pending>",
-                        ContentType = BodyType.text,
-                    };
-
-                    var newMessage = new Message
-                    {
-                        Subject = string.Format("\nCompleted test run from console app at {0}.", currentDateTime),
-                        Body = messageBody,
-                        ToRecipients = messageToList,
-                    };
-
-                    await graphClient.Me.SendMail(newMessage, true).Request().PostAsync();
+                    graphClient.Me.SendMail(newMessage, true).Request().PostAsync().Wait();
 
                     Console.WriteLine("\nMail sent from {0}", user.DisplayName);
                 }
-                catch (Exception)
+                catch (AggregateException e)
                 {
-                    Console.WriteLine("\nUnexpected Error attempting to send an email");
+                    e.Handle(exception =>
+                    {
+                        var serviceException = exception as ServiceException;
+
+                        string errorDetail = null;
+
+                        if (serviceException != null)
+                        {
+                            errorDetail = serviceException.ToString();
+                        }
+                        else
+                        {
+                            errorDetail = exception.Message;
+                        }
+
+                        Console.Write("\nUnexpected Error attempting to send an email:\n{0}", errorDetail);
+
+                        return true;
+                    });
                 }
+
                 #endregion
 
                 #region OneDrive functionality
 
                 try
                 {
-                    var rootItems = await graphClient.Me.Drive.Root.Children.Request().Top(5).GetAsync();
+                    var rootItems = graphClient.Me.Drive.Root.Children.Request().Top(5).GetAsync().Result;
 
                     if (rootItems.CurrentPage == null || rootItems.Count == 0)
                     {
@@ -593,12 +661,12 @@ namespace MicrosoftGraphSampleConsole
 
                 try
                 {
-                    folder = await graphClient.Me.Drive.Root.Children.Request().AddAsync(
+                    folder = graphClient.Me.Drive.Root.Children.Request().AddAsync(
                         new DriveItem
                         {
                             Folder = new Folder(),
                             Name = string.Format("Folder {0}", Helper.GetRandomString(5))
-                        });
+                        }).Result;
 
                     Console.WriteLine("\nCreated folder {0}", folder.Name);
                 }
@@ -611,7 +679,7 @@ namespace MicrosoftGraphSampleConsole
                 {
                     try
                     {
-                        var link = await graphClient.Me.Drive.Items[folder.Id].CreateLink("view").Request().PostAsync();
+                        var link = graphClient.Me.Drive.Items[folder.Id].CreateLink("view").Request().PostAsync().Result;
 
                         Console.WriteLine("\nCreated link {0}", link.Id);
                     }
@@ -622,13 +690,18 @@ namespace MicrosoftGraphSampleConsole
 
                     try
                     {
-                        await graphClient.Me.Drive.Items[folder.Id].Request().DeleteAsync();
+                        graphClient.Me.Drive.Items[folder.Id].Request().DeleteAsync().Wait();
 
                         Console.WriteLine("\nDeleted folder {0}", folder.Name);
                     }
-                    catch (Exception)
+                    catch (AggregateException e)
                     {
-                        Console.WriteLine("\nUnexpected Error attempting to delete folder.");
+                        e.Handle(exception =>
+                        {
+                            Console.WriteLine("\nUnexpected Error attempting to delete folder.");
+
+                            return true;
+                        });
                     }
                 }
 
@@ -637,7 +710,7 @@ namespace MicrosoftGraphSampleConsole
 
                 try
                 {
-                    var driveSearchResults = await graphClient.Me.Drive.Root.Search(driveItemsSearchString).Request().Top(10).GetAsync();
+                    var driveSearchResults = graphClient.Me.Drive.Root.Search(driveItemsSearchString).Request().Top(10).GetAsync().Result;
 
                     if (driveSearchResults.CurrentPage == null || driveSearchResults.Count == 0)
                     {
@@ -663,12 +736,31 @@ namespace MicrosoftGraphSampleConsole
                 {
                     try
                     {
-                        await graphClient.Groups[uGroup.Id].Request().DeleteAsync();
+                        graphClient.Groups[uGroup.Id].Request().DeleteAsync().Wait();
+
                         Console.WriteLine("\nDeleted group {0}", uGroup.DisplayName);
                     }
-                    catch (Exception e)
+                    catch (AggregateException e)
                     {
-                        Console.Write("Couldn't delete group.  Error detail: {0}", e.InnerException.Message);
+                        e.Handle(exception =>
+                        {
+                            var serviceException = exception as ServiceException;
+
+                            string errorDetail = null;
+
+                            if (serviceException != null)
+                            {
+                                errorDetail = serviceException.ToString();
+                            }
+                            else
+                            {
+                                errorDetail = exception.Message;
+                            }
+
+                            Console.Write("Couldn't delete group.  Error detail:\n{0}", errorDetail);
+
+                            return true;
+                        });
                     }
                 }
                 #endregion
@@ -680,7 +772,7 @@ namespace MicrosoftGraphSampleConsole
             }
 
         }
-        public static async Task AppMode()
+        public static void AppMode()
         {
             // record start DateTime of execution
             string currentDateTime = DateTime.Now.ToUniversalTime().ToString();
@@ -726,7 +818,7 @@ namespace MicrosoftGraphSampleConsole
             {
                 Console.WriteLine("\nEnter the email address of the user mailbox you want to retrieve:");
                 String email = Console.ReadLine();
-                var messages = await graphClient.Users[email].Messages.Request().Top(3).GetAsync();
+                var messages = graphClient.Users[email].Messages.Request().Top(3).GetAsync().Result;
                 Console.WriteLine();
                 Console.WriteLine("GET /user/{0}/messages?$top=3&$select=subject,receivedDateTime", email);
                 Console.WriteLine();

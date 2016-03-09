@@ -20,30 +20,5 @@ namespace MicrosoftGraphSampleConsole
             //because GUID can't be longer than 32
             return Guid.NewGuid().ToString("N").Substring(0, length > 32 ? 32 : length);
         }
-
-        public static async Task<Stream> GetRestRequestStream(string restRequest, string token)
-        {
-
-            using (var client = new HttpClient())
-            {
-                using (var request = new HttpRequestMessage(HttpMethod.Get, Constants.Url + restRequest))
-                {
-                    request.Headers.Add("Authorization", "Bearer " + token);
-                    using (var response = await client.SendAsync(request))
-                    {
-                        var content = await response.Content.ReadAsStreamAsync();
-                        if (response.IsSuccessStatusCode)
-                        {
-                            return content;
-                        }
-                        else
-                        {
-                            throw new Exception();
-                        }
-                    }
-                }
-            }
-
-        }
     }
 }
