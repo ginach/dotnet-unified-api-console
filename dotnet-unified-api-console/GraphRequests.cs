@@ -29,6 +29,7 @@ namespace MicrosoftGraphSampleConsole
             try
             {
                 graphClient = new GraphServiceClient(
+                    "https://graph.microsoft.com/testOneDrivePackageFix",
                     new DelegateAuthenticationProvider(
                         (requestMessage) =>
                         {
@@ -145,16 +146,32 @@ namespace MicrosoftGraphSampleConsole
             // GET /me/memberOf
             try
             {
-                var _groups = graphClient.Users[user.Id].MemberOf.Request().GetAsync().Result;
+                var groupList = new List<DirectoryObject>();
+
+                var currentPage = graphClient.Users[user.Id].MemberOf.Request().Top(1).GetAsync().Result;
+
+                groupList.AddRange(currentPage);
+
+                // Page through for the 5 results to test/demonstrate paging functionality as well
+                for (int i=0; i < 4; i++)
+                {
+                    if (currentPage.NextPageRequest != null)
+                    {
+                        currentPage = currentPage.NextPageRequest.GetAsync().Result;
+
+                        groupList.AddRange(currentPage);
+                    }
+                }
+
                 Console.WriteLine();
                 Console.WriteLine("GET /me/memberOf");
                 Console.WriteLine();
-                if (_groups.CurrentPage == null || _groups.Count == 0)
+                if (groupList.Count == 0)
                 {
                     Console.WriteLine("    user is not a member of any groups");
                 }
 
-                foreach (var _group in _groups)
+                foreach (var _group in groupList)
                 {
                     if (_group is Group)
                     {
