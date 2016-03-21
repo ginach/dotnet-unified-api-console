@@ -276,7 +276,7 @@ namespace MicrosoftGraphSampleConsole
             Console.WriteLine("\nSearch for user (enter search string):");
             String searchString = Console.ReadLine();
             
-            IUsersCollectionPage searchResults = null;
+            IGraphServiceUsersCollectionPage searchResults = null;
             try
             {
                 var queryOptions = new List<Option>
@@ -613,7 +613,7 @@ namespace MicrosoftGraphSampleConsole
                 var messageBody = new ItemBody
                 {
                     Content = "<report pending>",
-                    ContentType = BodyType.text,
+                    ContentType = BodyType.Text,
                 };
 
                 var newMessage = new Message
