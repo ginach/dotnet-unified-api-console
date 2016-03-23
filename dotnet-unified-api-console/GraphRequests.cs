@@ -29,7 +29,6 @@ namespace MicrosoftGraphSampleConsole
             try
             {
                 graphClient = new GraphServiceClient(
-                    "https://graph.microsoft.com/testOneDrivePackageFix",
                     new DelegateAuthenticationProvider(
                         (requestMessage) =>
                         {
