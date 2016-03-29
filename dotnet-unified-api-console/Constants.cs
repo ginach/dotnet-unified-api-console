@@ -7,14 +7,14 @@
         // app only configuration
         // In the Azure management portal, register a web application, and get a clientId and secret/key, 
         // and configure permissions according to README
-        public const string TenantId = "7b0208e6-0f64-47ae-bb8b-3e1ba480e347";
-        public const string ClientIdForAppAuthn = "336057fa-0c14-46ae-a59b-32d81c531c67";
-        public const string ClientSecret = "DxD0Rv92rEvo0QUBy7qF3nmJdsV/XcJaNoc3Sf/IHBQ=";
+        public const string TenantId = "08c33862-2dbb-4696-942d-6c31ca525938";
+        public const string ClientIdForAppAuthn = "f33644b6-88f2-4b1e-a31d-8f0a126531f1";
+        public const string ClientSecret = "lDkEtgj4pEisZZ7FApyG0oG+MFz9WVdU1ENLzk+PT0g=";
 
         // app+user console app configuration
         // In the Azure management portal, register a native client application, 
         // and configure permissions according to README
-        public const string ClientIdForUserAuthn = "0b45d997-3470-40ec-ad2c-a9b816e076df";
+        public const string ClientIdForUserAuthn = "22990061-de54-42ef-b78a-a7ec69c1146e";
         public const string redirectUriForUserAuthn = "http://localhost:44323";
 
         public const string AuthString = "https://login.microsoftonline.com/";
