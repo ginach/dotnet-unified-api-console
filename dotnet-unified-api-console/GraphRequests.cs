@@ -22,6 +22,9 @@ namespace MicrosoftGraphSampleConsole
         {
             // record start DateTime of execution
             string currentDateTime = DateTime.Now.ToUniversalTime().ToString();
+
+            // Prompt user for authentication before creating the client. This will cache the access token.
+            AuthenticationHelper.GetTokenForUser();
             #region Setup Microsoft Graph Client for user
 
             //*********************************************************************
@@ -685,7 +688,7 @@ namespace MicrosoftGraphSampleConsole
                             Name = string.Format("Folder {0}", Helper.GetRandomString(5))
                         }).Result;
 
-                    Console.WriteLine("\nCreated folder {0}", folder.Name);
+                    Console.WriteLine("\nCreated folder {0}\n", folder.Name);
                 }
                 catch (Exception)
                 {
@@ -698,7 +701,7 @@ namespace MicrosoftGraphSampleConsole
                     {
                         var link = graphClient.Me.Drive.Items[folder.Id].CreateLink("view").Request().PostAsync().Result;
 
-                        Console.WriteLine("\nCreated link {0}", link.Id);
+                        Console.WriteLine("\nCreated link {0}\n", link.Id);
                     }
                     catch (Exception)
                     {
@@ -709,7 +712,7 @@ namespace MicrosoftGraphSampleConsole
                     {
                         graphClient.Me.Drive.Items[folder.Id].Request().DeleteAsync().Wait();
 
-                        Console.WriteLine("\nDeleted folder {0}", folder.Name);
+                        Console.WriteLine("\nDeleted folder {0}\n", folder.Name);
                     }
                     catch (AggregateException e)
                     {
@@ -772,7 +775,7 @@ namespace MicrosoftGraphSampleConsole
 
                     createdEvent = graphClient.Me.Events.Request().AddAsync(eventToCreate).Result;
 
-                    Console.WriteLine("        Created event: {0}", createdEvent.Id);
+                    Console.WriteLine("        Created event: {0}\n", createdEvent.Id);
                 }
                 catch (ServiceException serviceException)
                 {
@@ -793,7 +796,7 @@ namespace MicrosoftGraphSampleConsole
                     {
                         createdAttachment = graphClient.Me.Events[createdEvent.Id].Attachments.Request().AddAsync(attachment).Result;
 
-                        Console.WriteLine("        Created attachment: {0}", createdAttachment.Id);
+                        Console.WriteLine("        Created attachment: {0}\n", createdAttachment.Id);
                     }
                     catch (ServiceException serviceException)
                     {
