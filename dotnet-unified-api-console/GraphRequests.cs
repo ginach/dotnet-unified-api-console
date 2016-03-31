@@ -66,7 +66,7 @@ namespace MicrosoftGraphSampleConsole
                 user = graphClient.Me.Request().GetAsync().Result;
                 Console.WriteLine();
                 Console.WriteLine("GET /me");
-                Console.WriteLine(); 
+                Console.WriteLine();
                 Console.WriteLine("    Id: {0}  UPN: {1}", user.Id, user.UserPrincipalName);
             }
             catch (Exception e)
@@ -77,7 +77,7 @@ namespace MicrosoftGraphSampleConsole
 
             try
             {
-                // get signed in user's picture.  
+                // get signed in user's picture.
                 // Drop to REST for this - Client Library doesn't support this yet :(
                 using (var photoStream = graphClient.Me.Photo.Content.Request().GetAsync().Result)
                 {
@@ -143,11 +143,12 @@ namespace MicrosoftGraphSampleConsole
             }
 
             // GET /me/memberOf
+            string groupIdForCheck = string.Empty;
             try
             {
                 var groupList = new List<DirectoryObject>();
 
-                var currentPage = graphClient.Users[user.Id].MemberOf.Request().Top(1).GetAsync().Result;
+                var currentPage = graphClient.Me.MemberOf.Request().Top(1).GetAsync().Result;
 
                 groupList.AddRange(currentPage);
 
@@ -176,6 +177,7 @@ namespace MicrosoftGraphSampleConsole
                     {
                         var __group = _group as Group;
                         Console.WriteLine("    Id: {0}  UPN: {1}", __group.Id, __group.DisplayName);
+                        groupIdForCheck = __group.Id;
                     }
                 }
             }
@@ -184,6 +186,30 @@ namespace MicrosoftGraphSampleConsole
                 Console.WriteLine("\nError getting group memberships {0} {1}",
                      e.Message, e.InnerException != null ? e.InnerException.Message : "");
             }
+
+            try
+            {
+                // GET /me/checkmemebergroups
+                IList<string> checkMemberGroups = null;
+                Task<IDirectoryObjectCheckMemberGroupsCollectionPage> task = graphClient.Me.CheckMemberGroups(new List<string> { groupIdForCheck }).Request().PostAsync();
+                task.Wait();
+                checkMemberGroups = task.Result.CurrentPage;
+
+                Console.WriteLine();
+                Console.WriteLine("GET /me/checkmembergroups");
+                Console.WriteLine();
+
+                foreach (string s in checkMemberGroups)
+                {
+                    Console.WriteLine("Checked Member Group: {0}", s);
+                }
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine("\nError getting directReports {0} {1}",
+                     e.Message, e.InnerException != null ? e.InnerException.Message : "");
+            }
+
             #endregion
 
             #region Get the signed in user's files, who last modified them, messages and events, and personal contacts
@@ -232,7 +258,14 @@ namespace MicrosoftGraphSampleConsole
                 }
 
                 // GET /me/Events?$top=5
-                var events = graphClient.Me.Events.Request().Top(5).GetAsync().Result;
+                var events =
+                    graphClient
+                    .Me
+                    .Events
+                    .Request(new List<Option> { new QueryOption("orderBy", "start/dateTime%20desc") })
+                    .Top(5)
+                    .GetAsync()
+                    .Result;
                 Console.WriteLine();
                 Console.WriteLine("GET /me/events?$top=5");
                 Console.WriteLine();
@@ -258,12 +291,291 @@ namespace MicrosoftGraphSampleConsole
                 {
                     Console.WriteLine("    Contact: {0} ", _contact.DisplayName);
                 }
+
+                // POST /me/messages/key/microsoft.graph.reply
+                var msg = messages.CurrentPage.Where(m => m.Sender.EmailAddress.Address.ToUpperInvariant().Contains("ADMIN")).First();
+                Console.WriteLine();
+                Console.WriteLine("POST /me/messages/key/microsoft.graph.reply");
+                Console.WriteLine();
+                graphClient.Me.Messages[msg.Id].Reply("This is a reply to my message.").Request().PostAsync().Wait();
+
+                // POST /me/messages/key/microsoft.graph.replyall
+                Console.WriteLine();
+                Console.WriteLine("POST /me/messages/key/microsoft.graph.replyall");
+                Console.WriteLine();
+                graphClient.Me.Messages[msg.Id].Reply("This is a replyall to my message.").Request().PostAsync().Wait();
+
+                try
+                {
+                    // POST /v1.0/me/mailfolders/drafts/messages
+                    Console.WriteLine();
+                    Console.WriteLine("POST /me/mailfolders/drafts/messages");
+                    Console.WriteLine();
+                    Message newDraft = new Message();
+                    Recipient draftRecipient = new Recipient();
+                    draftRecipient.EmailAddress = new EmailAddress();
+                    draftRecipient.EmailAddress.Address = user.Mail;
+                    draftRecipient.EmailAddress.Name = user.DisplayName;
+                    newDraft.ToRecipients = new List<Recipient> { draftRecipient };
+                    newDraft.Body = new ItemBody();
+                    newDraft.Body.ContentType = BodyType.Text;
+                    newDraft.Body.Content = "This is a new draft body";
+                    newDraft.Subject = "This is a new draft";
+                    Task<Message> draftTaks = graphClient.Me.MailFolders.Drafts.Messages.Request().AddAsync(newDraft);
+                    draftTaks.Wait();
+                    newDraft = draftTaks.Result;
+
+                    // POST /v1.0/me/mailfolders/drafts/messages/key/microsoft.graph.send
+                    Console.WriteLine();
+                    Console.WriteLine("POST /me/mailfolders/drafts/messages/key/microsoft.graph.send");
+                    Console.WriteLine();
+                    graphClient.Me.MailFolders.Drafts.Messages[newDraft.Id].Send().Request().PostAsync().Wait();
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine("\nError creating email dreaft or send {0} {1}",
+                     ex.Message, ex.InnerException != null ? ex.InnerException.Message : "");
+                }
+
+                // POST /me/events/key/attachments
+                Console.WriteLine();
+                Console.WriteLine("POST /me/events/key/attachments");
+                Console.WriteLine();
+                var eventFroAttachment = events.First();
+                FileAttachment attachment = new FileAttachment();
+                string fileContent = "this is an text attachment";
+                byte[] bytes = new byte[fileContent.Length * sizeof(char)];
+                Buffer.BlockCopy(fileContent.ToCharArray(), 0, bytes, 0, bytes.Length);
+                attachment.ContentBytes = bytes;
+                attachment.Size = bytes.Length;
+                attachment.Name = "TestAttachment.txt";
+                //ItemAttachment attachment = new ItemAttachment();
+                //attachment.Name = "Attached Event";
+                //attachment.Id = events[1].Id;
+                graphClient.Me.Events[eventFroAttachment.Id].Attachments.Request().AddAsync(attachment).Wait();
             }
             catch (Exception e)
             {
                 Console.WriteLine("\nError getting messages, events and contacts {0} {1}",
                      e.Message, e.InnerException != null ? e.InnerException.Message : "");
             }
+            #endregion
+
+            #region Get the signed in user's calendar events and related tests
+
+            Calendar calendar = null;
+            Event calendarEvent = null;
+
+            try
+            {
+                Task<IUserCalendarsCollectionPage> calendarsTask = graphClient.Me.Calendars.Request().GetAsync();
+                calendarsTask.Wait();
+                calendar = calendarsTask.Result.CurrentPage.First();
+
+                Task<ICalendarEventsCollectionPage> eventsTask =
+                    graphClient
+                    .Me
+                    .Calendars[calendar.Id]
+                    .Events
+                    .Request()
+                    .GetAsync();
+                eventsTask.Wait();
+                calendarEvent = eventsTask.Result.CurrentPage.First();
+
+                try
+                {
+                    Console.WriteLine();
+                    Console.Write("POST /v1.0/me/calendars/key/events/key/microsoft.graph.tentativelyaccept");
+                    Console.WriteLine();
+
+                    graphClient
+                        .Me
+                        .Calendars[calendar.Id]
+                        .Events[calendarEvent.Id]
+                        .TentativelyAccept()
+                        .Request()
+                        .PostAsync()
+                        .Wait();
+                }
+                catch (Exception)
+                {
+                    Console.WriteLine("\nThere is an error tentatively accepting a calendar event {0}", calendarEvent.Subject);
+                }
+
+                try
+                {
+                    Console.WriteLine();
+                    Console.Write("POST /v1.0/me/calendars/key/events/key/microsoft.graph.accept");
+                    Console.WriteLine();
+
+                    graphClient
+                        .Me
+                        .Calendars[calendar.Id]
+                        .Events[calendarEvent.Id]
+                        .Accept()
+                        .Request()
+                        .PostAsync()
+                        .Wait();
+                }
+                catch (Exception)
+                {
+                    Console.WriteLine("\nThere is an error accepting a calendar event {0}", calendarEvent.Subject);
+                }
+
+                try
+                {
+                    Console.WriteLine();
+                    Console.Write("POST /v1.0/me/calendars/key/events/key/microsoft.graph.decline");
+                    Console.WriteLine();
+
+                    graphClient
+                        .Me
+                        .Calendars[calendar.Id]
+                        .Events[calendarEvent.Id]
+                        .Decline()
+                        .Request()
+                        .PostAsync()
+                        .Wait();
+                }
+                catch (Exception)
+                {
+                    Console.WriteLine("\nThere is an error declining a calendar event {0}", calendarEvent.Subject);
+                }
+            }
+            catch (AggregateException e)
+            {
+                e.Handle(exception =>
+                    {
+                        var serviceException = exception as ServiceException;
+
+                        string errorDetail = null;
+
+                        if (serviceException != null)
+                        {
+                            errorDetail = serviceException.ToString();
+                        }
+                        else
+                        {
+                            errorDetail = exception.Message;
+                        }
+
+                        Console.Write("\nError operating on signed in user events.\n{0}", errorDetail);
+
+                        return true;
+                    });
+            }
+
+            #endregion
+
+            #region Get the signed in user's events (not through calendar) and related tests
+
+            Event userEvent = null;
+
+            try
+            {
+                Task<IUserEventsCollectionPage> task = graphClient.Me.Events.Request().GetAsync();
+                task.Wait();
+                userEvent = task.Result.CurrentPage.First();
+
+                try
+                {
+                    Console.WriteLine();
+                    Console.Write("POST /v1.0/me/events/key/microsoft.graph.tentativelyaccept");
+                    Console.WriteLine();
+
+                    graphClient
+                        .Me
+                        .Events[userEvent.Id]
+                        .TentativelyAccept()
+                        .Request()
+                        .PostAsync()
+                        .Wait();
+                }
+                catch (Exception)
+                {
+                    Console.WriteLine("\nThere is an error tentatively accepting a user event {0}", userEvent.Subject);
+                }
+
+                try
+                {
+                    Console.WriteLine();
+                    Console.Write("POST /v1.0/me/events/key/microsoft.graph.accept");
+                    Console.WriteLine();
+
+                    graphClient
+                        .Me
+                        .Events[userEvent.Id]
+                        .Accept()
+                        .Request()
+                        .PostAsync()
+                        .Wait();
+                }
+                catch (Exception)
+                {
+                    Console.WriteLine("\nThere is an error accepting a user event {0}", userEvent.Subject);
+                }
+
+                try
+                {
+                    Console.WriteLine();
+                    Console.Write("POST /v1.0/me/events/key/microsoft.graph.dismissreminder");
+                    Console.WriteLine();
+
+                    graphClient
+                        .Me
+                        .Events[userEvent.Id]
+                        .DismissReminder()
+                        .Request()
+                        .PostAsync()
+                        .Wait();
+                }
+                catch (Exception)
+                {
+                    Console.WriteLine("\nThere is an error dismissing reminder of a user event {0}", userEvent.Subject);
+                }
+
+                try
+                {
+                    Console.WriteLine();
+                    Console.Write("POST /v1.0/me/events/key/microsoft.graph.decline");
+                    Console.WriteLine();
+
+                    graphClient
+                        .Me
+                        .Events[userEvent.Id]
+                        .Decline()
+                        .Request()
+                        .PostAsync()
+                        .Wait();
+                }
+                catch (Exception)
+                {
+                    Console.WriteLine("\nThere is an error declining a user event {0}", userEvent.Subject);
+                }
+            }
+            catch (AggregateException e)
+            {
+                e.Handle(exception =>
+                    {
+                        var serviceException = exception as ServiceException;
+
+                        string errorDetail = null;
+
+                        if (serviceException != null)
+                        {
+                            errorDetail = serviceException.ToString();
+                        }
+                        else
+                        {
+                            errorDetail = exception.Message;
+                        }
+
+                        Console.Write("\nError operating on signed in user events.\n{0}", errorDetail);
+
+                        return true;
+                    });
+            }
+
             #endregion
 
             #region People picker example
@@ -274,7 +586,7 @@ namespace MicrosoftGraphSampleConsole
             //*********************************************************************
             Console.WriteLine("\nSearch for user (enter search string):");
             String searchString = Console.ReadLine();
-            
+
             IGraphServiceUsersCollectionPage searchResults = null;
             try
             {
@@ -314,19 +626,24 @@ namespace MicrosoftGraphSampleConsole
 
             #endregion
 
-            #region Create a unified group
-            // POST /groups - create unified group 
-            Console.WriteLine("\nDo you want to create a new unified group? Click y/n\n");
-            var createGroup = Console.ReadLine();
             Group uGroup = null;
-
             try
             {
+                #region Create a unified group
+
+                // POST /groups - create unified group
+                Console.WriteLine("\nDo you want to create a new unified group? Make sure there is a Unified Group whose name contains \"Unified group\" Click y/n\n");
+                var createGroup = Console.ReadLine();
+
                 if (string.Equals(createGroup, "y", StringComparison.OrdinalIgnoreCase) || string.Equals(createGroup, "yes", StringComparison.OrdinalIgnoreCase))
                 {
                     string suffix = Helper.GetRandomString(5);
                     try
                     {
+                        Console.WriteLine();
+                        Console.Write("POST /v1.0/groups");
+                        Console.WriteLine();
+
                         uGroup = graphClient.Groups.Request().AddAsync(
                             new Group
                             {
@@ -349,37 +666,121 @@ namespace MicrosoftGraphSampleConsole
 
                 #endregion
 
-                #region Add/remove group members
+                #region Tests under a group
 
-                Group retreivedGroup = uGroup;
+                Group retreivedGroup = null;
                 // get a set of users to add
-                var members = graphClient.Users.Request().Top(3).GetAsync().Result;
+                var members = graphClient
+                    .Users
+                    .Request()
+                    .Top(3)
+                    .GetAsync()
+                    .Result;
 
                 // Either add to newly created group, OR add to an existing group
                 if (retreivedGroup == null)
                 {
                     var foundGroups = graphClient
                         .Groups
-                        .Request(new List<Option> { new QueryOption("$filter", "groupTypes/any(gt:gt%20eq%20'Unified')") })
+                        .Request(new List<Option> { new QueryOption("$filter", "startswith(displayName,'Unified%20group%201234')") })
                         .Top(5)
                         .GetAsync()
                         .Result;
 
                     if (foundGroups.CurrentPage != null && foundGroups.Count > 0)
                     {
-                        retreivedGroup = foundGroups.First() as Group;
+                        retreivedGroup = foundGroups.CurrentPage.First() as Group;
                     }
                 }
 
                 if (retreivedGroup != null)
                 {
+                    const string NewConversationTopic = "New Conversation Topic";
+                    Conversation createdConversation = null;
+
+                    #region Create group conversation
+
+                    try
+                    {
+                        Console.WriteLine();
+                        Console.Write("POST /v1.0/groups/key/conversations");
+                        Console.WriteLine();
+
+                        Conversation newConversation = new Conversation();
+                        ConversationThreadsCollectionPage threadsPage = new ConversationThreadsCollectionPage();
+                        ConversationThread conversationThread = new ConversationThread();
+                        ConversationThreadPostsCollectionPage postsPage = new ConversationThreadPostsCollectionPage();
+                        Post post = new Post();
+                        ItemBody postBody = new ItemBody();
+                        List<Recipient> newParticipants = new List<Recipient>();
+
+                        postBody.ContentType = BodyType.Html;
+                        postBody.Content = "This is body content";
+                        post.Body = postBody;
+
+                        foreach (var _user in members)
+                        {
+                            if (!_user.DisplayName.Contains("Conf Room") && _user.Mail != user.Mail)
+                            {
+                                Recipient recipient = new Recipient();
+                                EmailAddress address = new EmailAddress();
+
+                                address.Address = _user.Mail;
+                                address.Name = _user.DisplayName;
+                                recipient.EmailAddress = address;
+                                newParticipants.Add(recipient);
+
+                                break;
+                            }
+                        }
+
+                        post.NewParticipants = newParticipants;
+                        postsPage.Add(post);
+                        conversationThread.Posts = postsPage;
+                        threadsPage.Add(conversationThread);
+                        newConversation.Threads = threadsPage;
+                        newConversation.Topic = NewConversationTopic;
+
+                        Task<Conversation> newConvTask = graphClient.Groups[retreivedGroup.Id].Conversations.Request().AddAsync(newConversation);
+                        newConvTask.Wait();
+                        createdConversation = newConvTask.Result;
+                    }
+                    catch (AggregateException e)
+                    {
+                        e.Handle(exception =>
+                        {
+                            var serviceException = exception as ServiceException;
+
+                            string errorDetail = null;
+
+                            if (serviceException != null)
+                            {
+                                errorDetail = serviceException.ToString();
+                            }
+                            else
+                            {
+                                errorDetail = exception.Message;
+                            }
+
+                            Console.Write("\nError creating a conversation in the group.\n{0}", errorDetail);
+
+                            return true;
+                        });
+                    }
+
+                    #endregion
+
+                    #region Add group members
                     // Add users
                     foreach (var _user in members)
                     {
                         try
                         {
-                            graphClient.Groups[retreivedGroup.Id].Members.References.Request().AddAsync(new User { Id = _user.Id }).Wait();
+                            Console.WriteLine();
+                            Console.Write("POST /v1.0/groups/key/members/$ref");
+                            Console.WriteLine();
 
+                            graphClient.Groups[retreivedGroup.Id].Members.References.Request().AddAsync(new User { Id = _user.Id }).Wait();
                             Console.WriteLine("\nAdded {0} to group {1}", _user.UserPrincipalName, retreivedGroup.DisplayName);
                         }
                         catch (AggregateException e)
@@ -406,13 +807,236 @@ namespace MicrosoftGraphSampleConsole
                         }
                     }
 
+                    #endregion
+
+                    #region Add group owners
+
+                    // Add owners
+                    foreach (var _user in members)
+                    {
+                        try
+                        {
+                            if (_user.Id != user.Id)
+                            {
+                                Console.WriteLine();
+                                Console.Write("DELETE /v1.0/groups/key/owners/key/$ref");
+                                Console.WriteLine();
+
+                                graphClient.Groups[retreivedGroup.Id].Owners.References.Request().AddAsync(new User { Id = _user.Id }).Wait();
+                                Console.WriteLine("\nAdded {0} to group {1} as owner", _user.UserPrincipalName, retreivedGroup.DisplayName);
+                            }
+                        }
+                        catch (AggregateException e)
+                        {
+                            e.Handle(exception =>
+                            {
+                                var serviceException = exception as ServiceException;
+
+                                string errorDetail = null;
+
+                                if (serviceException != null)
+                                {
+                                    errorDetail = serviceException.ToString();
+                                }
+                                else
+                                {
+                                    errorDetail = exception.Message;
+                                }
+
+                                Console.Write("\nError assigning owner to group.\n{0}", errorDetail);
+
+                                return true;
+                            });
+                        }
+                    }
+
+                    #endregion
+
+                    #region Add group to favorite and remove from favorite
+
+                    try
+                    {
+                        Console.WriteLine();
+                        Console.WriteLine("POST /v1.0/groups/key/microsoft.addfovorite");
+                        Console.WriteLine();
+                        graphClient.Groups[retreivedGroup.Id].AddFavorite().Request().PostAsync().Wait();
+                    }
+                    catch (Exception)
+                    {
+                        Console.Write("An issue happened when adding group id: {0}  upn: {1} to favorite", retreivedGroup.Id, retreivedGroup.DisplayName);
+                    }
+
+                    try
+                    {
+                        Console.WriteLine();
+                        Console.WriteLine("POST /v1.0/groups/key/microsoft.removefovorite");
+                        Console.WriteLine();
+                        graphClient.Groups[retreivedGroup.Id].RemoveFavorite().Request().PostAsync().Wait();
+                    }
+                    catch (Exception)
+                    {
+                        Console.Write("An issue happened when sdadding group id: {0}  upn: {1} to favorite", retreivedGroup.Id, retreivedGroup.DisplayName);
+                    }
+
+                    #endregion
+
+                    #region Subscribe by mail and unsubscribe
+
+                    try
+                    {
+                        Console.WriteLine();
+                        Console.Write("POST /v1.0/groups/key/microsoft.graph.subscribebymail");
+                        Console.WriteLine();
+
+                        graphClient.Groups[retreivedGroup.Id].SubscribeByMail().Request().PostAsync().Wait();
+                    }
+                    catch(Exception)
+                    {
+                        Console.WriteLine("\nFailed to subscribe group by mail");
+                    }
+
+                    try
+                    {
+                        Console.WriteLine();
+                        Console.Write("POST /v1.0/groups/key/microsoft.graph.unsubscribebymail");
+                        Console.WriteLine();
+
+                        graphClient.Groups[retreivedGroup.Id].UnsubscribeByMail().Request().PostAsync().Wait();
+                    }
+                    catch (Exception)
+                    {
+                        Console.WriteLine("\nFailed to unsubscribe group by mail");
+                    }
+
+                    #endregion
+
+                    #region Reset unseen count
+
+                    try
+                    {
+                        Console.WriteLine();
+                        Console.Write("POST /v1.0/groups/key/microsoft.graph.resetunseencount");
+                        Console.WriteLine();
+
+                        graphClient.Groups[retreivedGroup.Id].ResetUnseenCount().Request().PostAsync().Wait();
+                    }
+                    catch (Exception)
+                    {
+                        Console.WriteLine("\nFailed to reset unseen count in group");
+                    }
+
+                    #endregion
+
+                    #region Reply thread and post
+
+                    try
+                    {
+                        Task<IGroupThreadsCollectionPage> threadsTask = graphClient.Groups[retreivedGroup.Id].Threads.Request().GetAsync();
+                        threadsTask.Wait();
+                        ConversationThread thread = threadsTask.Result.CurrentPage.Where(t => t.Topic == NewConversationTopic).First();
+
+                        Post replyPost = new Post();
+                        replyPost.Body = new ItemBody();
+                        replyPost.Body.ContentType = BodyType.Html;
+                        replyPost.Body.Content = "this is a reply to a thread";
+
+                        try
+                        {
+                            Console.WriteLine();
+                            Console.Write("POST /v1.0/groups/key/threads/key/microsoft.graph.reply");
+                            Console.WriteLine();
+                            graphClient.Groups[retreivedGroup.Id].Threads[thread.Id].Reply(replyPost).Request().PostAsync().Wait();
+                        }
+                        catch (Exception)
+                        {
+                            Console.WriteLine("\nThere is a problem relying to a thread.\n");
+                        }
+
+                        try
+                        {
+                            Console.WriteLine();
+                            Console.Write("POST /v1.0/groups/key/threads/key/posts");
+                            Console.WriteLine();
+                            replyPost.Body.Content = "add a post to the thread";
+                            graphClient.Groups[retreivedGroup.Id].Threads[thread.Id].Posts.Request().AddAsync(replyPost).Wait();
+                        }
+                        catch (Exception)
+                        {
+                            Console.WriteLine("\nThere is a problem relying to a thread.\n");
+                        }
+
+                        try
+                        {
+                            Console.WriteLine();
+                            Console.Write("POST /v1.0/groups/key/threads/key/posts/key/microsoft.graph.reply");
+                            Console.WriteLine();
+                            Task<IConversationThreadPostsCollectionPage> postsTask =
+                                graphClient.Groups[retreivedGroup.Id].Threads[thread.Id].Posts.Request().GetAsync();
+                            postsTask.Wait();
+                            Post post = postsTask.Result.CurrentPage.First();
+                            replyPost.Body.Content = "this is a reply to a post in the thread";
+                            graphClient.Groups[retreivedGroup.Id].Threads[thread.Id].Posts[post.Id].Reply(replyPost).Request().PostAsync().Wait();
+                        }
+                        catch (AggregateException e)
+                        {
+                            e.Handle(exception =>
+                        {
+                            var serviceException = exception as ServiceException;
+
+                            string errorDetail = null;
+
+                            if (serviceException != null)
+                            {
+                                errorDetail = serviceException.ToString();
+                            }
+                            else
+                            {
+                                errorDetail = exception.Message;
+                            }
+
+                            Console.Write("\nError replying a post in the group.\n{0}", errorDetail);
+
+                            return true;
+                        });
+                        }
+                    }
+                    catch (AggregateException e)
+                    {
+                        e.Handle(exception =>
+                        {
+                            var serviceException = exception as ServiceException;
+
+                            string errorDetail = null;
+
+                            if (serviceException != null)
+                            {
+                                errorDetail = serviceException.ToString();
+                            }
+                            else
+                            {
+                                errorDetail = exception.Message;
+                            }
+
+                            Console.Write("\nError replying a thread in the group.\n{0}", errorDetail);
+
+                            return true;
+                        });
+                    }
+
+                    #endregion
+
+                    #region Remove group members
+
                     // now remove the added users
                     foreach (var _user in members)
                     {
                         try
                         {
-                            graphClient.Groups[retreivedGroup.Id].Members[_user.Id].Reference.Request().DeleteAsync().Wait();
+                            Console.WriteLine();
+                            Console.Write("DELETE /v1.0/groups/key/members/key/$ref");
+                            Console.WriteLine();
 
+                            graphClient.Groups[retreivedGroup.Id].Members[_user.Id].Reference.Request().DeleteAsync().Wait();
                             Console.WriteLine("\nRemoved {0} from group {1}", _user.UserPrincipalName, retreivedGroup.DisplayName);
                         }
                         catch (AggregateException e)
@@ -438,6 +1062,67 @@ namespace MicrosoftGraphSampleConsole
                             });
                         }
                     }
+
+                    #endregion
+
+                    #region Remove group owners
+
+                    // Remove owners
+                    foreach (var _user in members)
+                    {
+                        try
+                        {
+                            if (_user.Id != user.Id)
+                            {
+                                Console.WriteLine();
+                                Console.Write("DELETE /v1.0/groups/key/owners/key/$ref");
+                                Console.WriteLine();
+
+                                graphClient.Groups[retreivedGroup.Id].Owners[_user.Id].Reference.Request().DeleteAsync().Wait();
+                                Console.WriteLine("\nRemoved {0} from group as owner{1}", _user.UserPrincipalName, retreivedGroup.DisplayName);
+                            }
+                        }
+                        catch (AggregateException e)
+                        {
+                            e.Handle(exception =>
+                            {
+                                var serviceException = exception as ServiceException;
+
+                                string errorDetail = null;
+
+                                if (serviceException != null)
+                                {
+                                    errorDetail = serviceException.ToString();
+                                }
+                                else
+                                {
+                                    errorDetail = exception.Message;
+                                }
+
+                                Console.Write("\nError removing owner from group.\n{0}", errorDetail);
+
+                                return true;
+                            });
+                        }
+                    }
+
+                    #endregion
+
+                    #region Remove group conversation
+
+                    try
+                    {
+                        Console.WriteLine();
+                        Console.Write("DELETE /v1.0/groups/key/conversations/key/");
+                        Console.WriteLine();
+                        graphClient.Groups[retreivedGroup.Id].Conversations[createdConversation.Id].Request().DeleteAsync().Wait();
+                    }
+                    catch (Exception)
+                    {
+                        Console.WriteLine("\nThere was a problem deleting the conversation\n");
+                    }
+
+                    #endregion
                 }
                 else
                 {
@@ -495,6 +1180,28 @@ namespace MicrosoftGraphSampleConsole
                             {
                                 Console.WriteLine("        User: {0} ", _user.DisplayName);
                             }
+                        }
+
+                        try
+                        {
+                            // get member objects of the group
+                            var unifiedGroupMemeberObjects = graphClient.Groups[_group.Id].GetMemberObjects(false).Request().PostAsync().Result;
+                            if (unifiedGroupMemeberObjects.CurrentPage == null || unifiedGroupMemeberObjects.Count == 0)
+                            {
+                                Console.WriteLine("        No member object for the group");
+                            }
+
+                            foreach(var memberObject in unifiedGroupMemeberObjects)
+                            {
+                                if (memberObject != null)
+                                {
+                                    Console.WriteLine("MemeberObject: {0}", memberObject);
+                                }
+                            }
+                        }
+                        catch (Exception)
+                        {
+                            Console.WriteLine("Unexpected exception when getting group member objects");
                         }
 
                         //get group files
@@ -653,11 +1360,37 @@ namespace MicrosoftGraphSampleConsole
 
                 #endregion
 
-                #region OneDrive functionality
+                #region Send mail to a user
+
+                User emailRecipient = members.CurrentPage.First();
 
                 try
                 {
-                    var rootItems = graphClient.Me.Drive.Root.Children.Request().Top(5).GetAsync().Result;
+                    Console.WriteLine();
+                    Console.WriteLine("POST /users/key/microsoft.graph.sendmail");
+                    Console.WriteLine();
+
+                    Message message = new Message();
+                    message.Subject = "Test email from SDK test";
+                    message.Body.ContentType = BodyType.Html;
+                    message.Body.Content = "Test email body from SDK test";
+
+                    graphClient.Users[emailRecipient.Id].SendMail(message).Request().PostAsync().Wait();
+                }
+                catch (Exception)
+                {
+                    Console.WriteLine("\nThere was a problem to send email to {0}\n", emailRecipient.Mail);
+                }
+
+                #endregion
+
+                #region OneDrive functionality
+
+                IDriveItemChildrenCollectionPage rootItems = null;
+
+                try
+                {
+                    rootItems = graphClient.Me.Drive.Root.Children.Request().Top(5).GetAsync().Result;
 
                     if (rootItems.CurrentPage == null || rootItems.Count == 0)
                     {
@@ -671,6 +1404,34 @@ namespace MicrosoftGraphSampleConsole
                 catch (Exception)
                 {
                     Console.WriteLine("\nUnexpected error attempting to get root items.");
+                }
+
+                DriveItem driveItem1 = rootItems[0];
+
+                try
+                {
+                    Console.WriteLine();
+                    Console.WriteLine("POST me/drive/items/key/microsoft.graph.createlink");
+                    Console.WriteLine();
+
+                    graphClient.Drive.Items[driveItem1.Id].CreateLink("view").Request().PostAsync().Wait();
+                }
+                catch (Exception)
+                {
+                    Console.WriteLine("\nUnexpected error attempting to create a link to item {0}  id: {1}.\n", driveItem1.Name, driveItem1.Id);
+                }
+
+                try
+                {
+                    Console.WriteLine();
+                    Console.WriteLine("POST me/drive/root/children/key/microsoft.graph.createlink");
+                    Console.WriteLine();
+
+                    graphClient.Drive.Root.Children[driveItem1.Id].CreateLink("view").Request().PostAsync().Wait();
+                }
+                catch (Exception)
+                {
+                    Console.WriteLine("\nUnexpected error attempting to create a link to root children item {0}  id: {1}.\n", driveItem1.Name, driveItem1.Id);
                 }
 
                 DriveItem folder = null;
@@ -828,7 +1589,7 @@ namespace MicrosoftGraphSampleConsole
             Console.WriteLine("\n=============================\n\n");
 
             #region get specific user's email messages
-            // 
+            //
             // get a specific user's email - demonstrates $select in Linq query
             try
             {
