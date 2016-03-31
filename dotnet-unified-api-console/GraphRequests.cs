@@ -8,6 +8,7 @@ using System.Net.Http.Headers;
 using System.Threading.Tasks;
 using Microsoft.Graph;
 using System.Threading;
+using System.Text;
 
 #endregion
 
@@ -21,6 +22,9 @@ namespace MicrosoftGraphSampleConsole
         {
             // record start DateTime of execution
             string currentDateTime = DateTime.Now.ToUniversalTime().ToString();
+
+            // Prompt user for authentication before creating the client. This will cache the access token.
+            AuthenticationHelper.GetTokenForUser();
             #region Setup Microsoft Graph Client for user
 
             //*********************************************************************
@@ -1445,7 +1449,7 @@ namespace MicrosoftGraphSampleConsole
                             Name = string.Format("Folder {0}", Helper.GetRandomString(5))
                         }).Result;
 
-                    Console.WriteLine("\nCreated folder {0}", folder.Name);
+                    Console.WriteLine("\nCreated folder {0}\n", folder.Name);
                 }
                 catch (Exception)
                 {
@@ -1458,7 +1462,7 @@ namespace MicrosoftGraphSampleConsole
                     {
                         var link = graphClient.Me.Drive.Items[folder.Id].CreateLink("view").Request().PostAsync().Result;
 
-                        Console.WriteLine("\nCreated link {0}", link.Id);
+                        Console.WriteLine("\nCreated link {0}\n", link.Id);
                     }
                     catch (Exception)
                     {
@@ -1469,7 +1473,7 @@ namespace MicrosoftGraphSampleConsole
                     {
                         graphClient.Me.Drive.Items[folder.Id].Request().DeleteAsync().Wait();
 
-                        Console.WriteLine("\nDeleted folder {0}", folder.Name);
+                        Console.WriteLine("\nDeleted folder {0}\n", folder.Name);
                     }
                     catch (AggregateException e)
                     {
@@ -1505,6 +1509,124 @@ namespace MicrosoftGraphSampleConsole
 
                 #endregion
 
+                #region Events
+
+                Event createdEvent = null;
+                try
+                {
+                    var now = DateTimeOffset.UtcNow;
+                    var startDate = new DateTimeOffset(now.Year, now.Month, now.Day, 0, 0, 0, TimeSpan.Zero);
+                    var endDate = startDate.AddDays(1);
+                    var eventToCreate = new Event
+                    {
+                        IsAllDay = true,
+                        ResponseRequested = false,
+                        Start = new DateTimeTimeZone
+                        {
+                            DateTime = startDate.UtcDateTime.ToString("yyyy-MM-ddTHH:mm:ssZ"),
+                            TimeZone = TimeZone.CurrentTimeZone.DaylightName,
+                        },
+                        End = new DateTimeTimeZone
+                        {
+                            DateTime = endDate.UtcDateTime.ToString("yyyy-MM-ddTHH:mm:ssZ"),
+                            TimeZone = TimeZone.CurrentTimeZone.DaylightName,
+                        },
+                        Subject = now.UtcTicks.ToString(),
+                    };
+
+                    createdEvent = graphClient.Me.Events.Request().AddAsync(eventToCreate).Result;
+
+                    Console.WriteLine("        Created event: {0}\n", createdEvent.Id);
+                }
+                catch (ServiceException serviceException)
+                {
+                    Console.WriteLine("\nUnexpected error attempting to create event: {0}", serviceException.ToString());
+                }
+
+                if (createdEvent != null)
+                {
+                    var attachment = new FileAttachment
+                    {
+                        ContentBytes = Encoding.UTF8.GetBytes("content string!"),
+                        Name = "event attachment",
+                    };
+
+                    Attachment createdAttachment = null;
+
+                    try
+                    {
+                        createdAttachment = graphClient.Me.Events[createdEvent.Id].Attachments.Request().AddAsync(attachment).Result;
+
+                        Console.WriteLine("        Created attachment: {0}\n", createdAttachment.Id);
+                    }
+                    catch (ServiceException serviceException)
+                    {
+                        Console.WriteLine("\nUnexpected error attempting to create attachment: {0}", serviceException.ToString());
+                    }
+
+                    if (createdAttachment != null)
+                    {
+                        try
+                        {
+                            graphClient.Me.Events[createdEvent.Id].Attachments[createdAttachment.Id].Request().DeleteAsync().Wait();
+
+                            Console.Write("\nDeleted attachment {0}\n", createdAttachment.Id);
+                        }
+                        catch (AggregateException e)
+                        {
+                            e.Handle(exception =>
+                            {
+                                var serviceException = exception as ServiceException;
+
+                                string errorDetail = null;
+
+                                if (serviceException != null)
+                                {
+                                    errorDetail = serviceException.ToString();
+                                }
+                                else
+                                {
+                                    errorDetail = exception.Message;
+                                }
+
+                                Console.Write("\nError deleting attachment.\n{0}", errorDetail);
+
+                                return true;
+                            });
+                        }
+                    }
+
+                    try
+                    {
+                        graphClient.Me.Events[createdEvent.Id].Request().DeleteAsync().Wait();
+
+                        Console.Write("\nDeleted event {0}\n", createdEvent.Id);
+                    }
+                    catch (AggregateException e)
+                    {
+                        e.Handle(exception =>
+                        {
+                            var serviceException = exception as ServiceException;
+
+                            string errorDetail = null;
+
+                            if (serviceException != null)
+                            {
+                                errorDetail = serviceException.ToString();
+                            }
+                            else
+                            {
+                                errorDetail = exception.Message;
+                            }
+
+                            Console.Write("\nError deleting event.\n{0}", errorDetail);
+
+                            return true;
+                        });
+                    }
+                }
+
+                #endregion
             }
             finally
             {
@@ -1544,7 +1666,7 @@ namespace MicrosoftGraphSampleConsole
 
                 if (graphClient != null)
                 {
-                    graphClient.Dispose();
+                    graphClient.HttpProvider.Dispose();
                 }
             }
 
@@ -1617,7 +1739,7 @@ namespace MicrosoftGraphSampleConsole
             {
                 if (graphClient != null)
                 {
-                    graphClient.Dispose();
+                    graphClient.HttpProvider.Dispose();
                 }
             }
             #endregion
