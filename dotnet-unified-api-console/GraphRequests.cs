@@ -471,6 +471,206 @@ namespace MicrosoftGraphSampleConsole
 
             #endregion
 
+            #region Create events and attachments and related tests
+
+            Event recurringEvent = null;
+            try
+            {
+                var now = DateTimeOffset.UtcNow;
+                var startDate = new DateTimeOffset(now.Year, now.Month, now.Day, 0, 0, 0, TimeSpan.Zero);
+                var endDate = startDate.AddDays(1);
+
+                var recurrenceEnd = DateTimeOffset.UtcNow.AddDays(20);
+
+                var eventToCreate = new Event
+                {
+                    Recurrence = new PatternedRecurrence
+                    {
+                        Range = new RecurrenceRange
+                        {
+                            StartDate = new Date(now.Year, now.Month, now.Day),
+                            EndDate = new Date(recurrenceEnd.Year, recurrenceEnd.Month, recurrenceEnd.Day),
+                            Type = RecurrenceRangeType.EndDate,
+                        },
+                        Pattern = new RecurrencePattern
+                        {
+                            Type = RecurrencePatternType.Daily,
+                            Interval = 1,
+                        }
+                    },
+                    ResponseRequested = false,
+                    Start = new DateTimeTimeZone
+                    {
+                        DateTime = startDate.UtcDateTime.ToString("yyyy-MM-ddTHH:mm:ssZ"),
+                        TimeZone = "UTC",
+                    },
+                    End = new DateTimeTimeZone
+                    {
+                        DateTime = endDate.UtcDateTime.ToString("yyyy-MM-ddTHH:mm:ssZ"),
+                        TimeZone = "UTC",
+                    },
+                    Subject = now.UtcTicks.ToString(),
+                };
+
+                recurringEvent = graphClient.Me.Events.Request().AddAsync(eventToCreate).Result;
+
+                Console.WriteLine("        Created recurring event: {0}\n", recurringEvent.Id);
+            }
+            catch (ServiceException serviceException)
+            {
+                Console.WriteLine("\nUnexpected error attempting to create recurring event: {0}", serviceException.ToString());
+            }
+
+            if (recurringEvent != null)
+            {
+                var attachment = new FileAttachment
+                {
+                    ContentBytes = Encoding.UTF8.GetBytes("content string!"),
+                    Name = "event attachment",
+                };
+
+                Attachment createdAttachment = null;
+
+                try
+                {
+                    createdAttachment = graphClient.Me.Events[recurringEvent.Id].Attachments.Request().AddAsync(attachment).Result;
+
+                    Console.WriteLine("        Created attachment: {0}\n", createdAttachment.Id);
+                }
+                catch (ServiceException serviceException)
+                {
+                    Console.WriteLine("\nUnexpected error attempting to create attachment: {0}", serviceException.ToString());
+                }
+
+                if (createdAttachment != null)
+                {
+                    try
+                    {
+                        graphClient.Me.Events[recurringEvent.Id].Attachments[createdAttachment.Id].Request().DeleteAsync().Wait();
+
+                        Console.Write("\nDeleted attachment {0}\n", createdAttachment.Id);
+                    }
+                    catch (AggregateException e)
+                    {
+                        e.Handle(exception =>
+                        {
+                            var serviceException = exception as ServiceException;
+
+                            string errorDetail = null;
+
+                            if (serviceException != null)
+                            {
+                                errorDetail = serviceException.ToString();
+                            }
+                            else
+                            {
+                                errorDetail = exception.Message;
+                            }
+
+                            Console.Write("\nError deleting attachment.\n{0}", errorDetail);
+
+                            return true;
+                        });
+                    }
+                }
+
+                try
+                {
+                    graphClient.Me.Events[recurringEvent.Id].Request().DeleteAsync().Wait();
+
+                    Console.Write("\nDeleted recurring event {0}\n", recurringEvent.Id);
+                }
+                catch (AggregateException e)
+                {
+                    e.Handle(exception =>
+                    {
+                        var serviceException = exception as ServiceException;
+
+                        string errorDetail = null;
+
+                        if (serviceException != null)
+                        {
+                            errorDetail = serviceException.ToString();
+                        }
+                        else
+                        {
+                            errorDetail = exception.Message;
+                        }
+
+                        Console.Write("\nError deleting recurring event.\n{0}", errorDetail);
+
+                        return true;
+                    });
+                }
+
+                Event allDayEvent = null;
+                try
+                {
+                    var now = DateTimeOffset.UtcNow;
+                    var startDate = new DateTimeOffset(now.Year, now.Month, now.Day, 0, 0, 0, TimeSpan.Zero);
+                    var endDate = startDate.AddDays(1);
+
+                    var eventToCreate = new Event
+                    {
+                        IsAllDay = true,
+                        ResponseRequested = false,
+                        Start = new DateTimeTimeZone
+                        {
+                            DateTime = startDate.UtcDateTime.ToString("yyyy-MM-ddTHH:mm:ssZ"),
+                            TimeZone = "UTC",
+                        },
+                        End = new DateTimeTimeZone
+                        {
+                            DateTime = endDate.UtcDateTime.ToString("yyyy-MM-ddTHH:mm:ssZ"),
+                            TimeZone = "UTC",
+                        },
+                        Subject = now.UtcTicks.ToString(),
+                    };
+
+                    allDayEvent = graphClient.Me.Events.Request().AddAsync(eventToCreate).Result;
+
+                    Console.WriteLine("        Created all-day event: {0}\n", allDayEvent.Id);
+                }
+                catch (ServiceException serviceException)
+                {
+                    Console.WriteLine("\nUnexpected error attempting to create all-day event: {0}", serviceException.ToString());
+                }
+
+                if (allDayEvent != null)
+                {
+                    try
+                    {
+                        graphClient.Me.Events[allDayEvent.Id].Request().DeleteAsync().Wait();
+
+                        Console.Write("\nDeleted all-day event {0}\n", allDayEvent.Id);
+                    }
+                    catch (AggregateException e)
+                    {
+                        e.Handle(exception =>
+                        {
+                            var serviceException = exception as ServiceException;
+
+                            string errorDetail = null;
+
+                            if (serviceException != null)
+                            {
+                                errorDetail = serviceException.ToString();
+                            }
+                            else
+                            {
+                                errorDetail = exception.Message;
+                            }
+
+                            Console.Write("\nError deleting all-day event.\n{0}", errorDetail);
+
+                            return true;
+                        });
+                    }
+                }
+            }
+
+            #endregion
+
             #region Get the signed in user's events (not through calendar) and related tests
 
             Event userEvent = null;
@@ -1376,8 +1576,11 @@ namespace MicrosoftGraphSampleConsole
 
                     Message message = new Message();
                     message.Subject = "Test email from SDK test";
-                    message.Body.ContentType = BodyType.Html;
-                    message.Body.Content = "Test email body from SDK test";
+                    message.Body = new ItemBody
+                    {
+                        ContentType = BodyType.Html,
+                        Content = "Test email body from SDK test",
+                    };
 
                     graphClient.Users[emailRecipient.Id].SendMail(message).Request().PostAsync().Wait();
                 }
@@ -1410,32 +1613,35 @@ namespace MicrosoftGraphSampleConsole
                     Console.WriteLine("\nUnexpected error attempting to get root items.");
                 }
 
-                DriveItem driveItem1 = rootItems[0];
-
-                try
+                if (rootItems != null)
                 {
-                    Console.WriteLine();
-                    Console.WriteLine("POST me/drive/items/key/microsoft.graph.createlink");
-                    Console.WriteLine();
+                    DriveItem driveItem1 = rootItems[0];
 
-                    graphClient.Drive.Items[driveItem1.Id].CreateLink("view").Request().PostAsync().Wait();
-                }
-                catch (Exception)
-                {
-                    Console.WriteLine("\nUnexpected error attempting to create a link to item {0}  id: {1}.\n", driveItem1.Name, driveItem1.Id);
-                }
+                    try
+                    {
+                        Console.WriteLine();
+                        Console.WriteLine("POST me/drive/items/key/microsoft.graph.createlink");
+                        Console.WriteLine();
 
-                try
-                {
-                    Console.WriteLine();
-                    Console.WriteLine("POST me/drive/root/children/key/microsoft.graph.createlink");
-                    Console.WriteLine();
+                        graphClient.Drive.Items[driveItem1.Id].CreateLink("view").Request().PostAsync().Wait();
+                    }
+                    catch (Exception)
+                    {
+                        Console.WriteLine("\nUnexpected error attempting to create a link to item {0}  id: {1}.\n", driveItem1.Name, driveItem1.Id);
+                    }
 
-                    graphClient.Drive.Root.Children[driveItem1.Id].CreateLink("view").Request().PostAsync().Wait();
-                }
-                catch (Exception)
-                {
-                    Console.WriteLine("\nUnexpected error attempting to create a link to root children item {0}  id: {1}.\n", driveItem1.Name, driveItem1.Id);
+                    try
+                    {
+                        Console.WriteLine();
+                        Console.WriteLine("POST me/drive/root/children/key/microsoft.graph.createlink");
+                        Console.WriteLine();
+
+                        graphClient.Drive.Root.Children[driveItem1.Id].CreateLink("view").Request().PostAsync().Wait();
+                    }
+                    catch (Exception)
+                    {
+                        Console.WriteLine("\nUnexpected error attempting to create a link to root children item {0}  id: {1}.\n", driveItem1.Name, driveItem1.Id);
+                    }
                 }
 
                 DriveItem folder = null;
@@ -1505,125 +1711,6 @@ namespace MicrosoftGraphSampleConsole
                 catch (Exception)
                 {
                     Console.WriteLine("\nUnexpected Error attempting to create folder.");
-                }
-
-                #endregion
-
-                #region Events
-
-                Event createdEvent = null;
-                try
-                {
-                    var now = DateTimeOffset.UtcNow;
-                    var startDate = new DateTimeOffset(now.Year, now.Month, now.Day, 0, 0, 0, TimeSpan.Zero);
-                    var endDate = startDate.AddDays(1);
-                    var eventToCreate = new Event
-                    {
-                        IsAllDay = true,
-                        ResponseRequested = false,
-                        Start = new DateTimeTimeZone
-                        {
-                            DateTime = startDate.UtcDateTime.ToString("yyyy-MM-ddTHH:mm:ssZ"),
-                            TimeZone = TimeZone.CurrentTimeZone.DaylightName,
-                        },
-                        End = new DateTimeTimeZone
-                        {
-                            DateTime = endDate.UtcDateTime.ToString("yyyy-MM-ddTHH:mm:ssZ"),
-                            TimeZone = TimeZone.CurrentTimeZone.DaylightName,
-                        },
-                        Subject = now.UtcTicks.ToString(),
-                    };
-
-                    createdEvent = graphClient.Me.Events.Request().AddAsync(eventToCreate).Result;
-
-                    Console.WriteLine("        Created event: {0}\n", createdEvent.Id);
-                }
-                catch (ServiceException serviceException)
-                {
-                    Console.WriteLine("\nUnexpected error attempting to create event: {0}", serviceException.ToString());
-                }
-
-                if (createdEvent != null)
-                {
-                    var attachment = new FileAttachment
-                    {
-                        ContentBytes = Encoding.UTF8.GetBytes("content string!"),
-                        Name = "event attachment",
-                    };
-
-                    Attachment createdAttachment = null;
-
-                    try
-                    {
-                        createdAttachment = graphClient.Me.Events[createdEvent.Id].Attachments.Request().AddAsync(attachment).Result;
-
-                        Console.WriteLine("        Created attachment: {0}\n", createdAttachment.Id);
-                    }
-                    catch (ServiceException serviceException)
-                    {
-                        Console.WriteLine("\nUnexpected error attempting to create attachment: {0}", serviceException.ToString());
-                    }
-
-                    if (createdAttachment != null)
-                    {
-                        try
-                        {
-                            graphClient.Me.Events[createdEvent.Id].Attachments[createdAttachment.Id].Request().DeleteAsync().Wait();
-
-                            Console.Write("\nDeleted attachment {0}\n", createdAttachment.Id);
-                        }
-                        catch (AggregateException e)
-                        {
-                            e.Handle(exception =>
-                            {
-                                var serviceException = exception as ServiceException;
-
-                                string errorDetail = null;
-
-                                if (serviceException != null)
-                                {
-                                    errorDetail = serviceException.ToString();
-                                }
-                                else
-                                {
-                                    errorDetail = exception.Message;
-                                }
-
-                                Console.Write("\nError deleting attachment.\n{0}", errorDetail);
-
-                                return true;
-                            });
-                        }
-                    }
-
-                    try
-                    {
-                        graphClient.Me.Events[createdEvent.Id].Request().DeleteAsync().Wait();
-
-                        Console.Write("\nDeleted event {0}\n", createdEvent.Id);
-                    }
-                    catch (AggregateException e)
-                    {
-                        e.Handle(exception =>
-                        {
-                            var serviceException = exception as ServiceException;
-
-                            string errorDetail = null;
-
-                            if (serviceException != null)
-                            {
-                                errorDetail = serviceException.ToString();
-                            }
-                            else
-                            {
-                                errorDetail = exception.Message;
-                            }
-
-                            Console.Write("\nError deleting event.\n{0}", errorDetail);
-
-                            return true;
-                        });
-                    }
                 }
 
                 #endregion
